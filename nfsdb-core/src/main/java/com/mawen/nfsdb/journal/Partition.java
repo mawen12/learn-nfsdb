@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.mawen.nfsdb.journal.column.AbstractColumn;
 import com.mawen.nfsdb.journal.column.FixedWidthColumn;
+import com.mawen.nfsdb.journal.column.MappedFile;
 import com.mawen.nfsdb.journal.column.MappedFileImpl;
 import com.mawen.nfsdb.journal.column.NullsColumn;
 import com.mawen.nfsdb.journal.column.SymbolIndex;
@@ -19,7 +20,9 @@ import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
 import com.mawen.nfsdb.journal.factory.JournalMetadata;
 import com.mawen.nfsdb.journal.factory.NullsAdaptor;
+import com.mawen.nfsdb.journal.iterators.ParallelIterator;
 import com.mawen.nfsdb.journal.logging.Logger;
+import com.mawen.nfsdb.journal.utils.ByteBuffers;
 import com.mawen.nfsdb.journal.utils.Dates;
 import com.mawen.nfsdb.journal.utils.Rows;
 import org.joda.time.Interval;
@@ -48,7 +51,23 @@ public class Partition<T> implements Iterable<T>, Closeable {
 	}
 
 	public Partition<T> open() throws JournalException {
+		access();
 
+		if (columns == null) {
+
+			columns = new AbstractColumn[journal.getMetadata().getColumnCount()];
+
+			int nullsRecordSize = ((columns.length >>> 6) + (columns.length % 64 == 0 ? 0 : 1)) * 8;
+			nullsColumn = new NullsColumn(
+					new MappedFileImpl(new File(partitionDir, "_nulls.d"),
+							ByteBuffers.getBitHint(nullsRecordSize,journal.getMetadata().getRecordHint()), journal.getMode()),
+					nullsRecordSize,
+					columns.length
+			);
+
+
+		}
+		return this;
 	}
 
 	@Override
