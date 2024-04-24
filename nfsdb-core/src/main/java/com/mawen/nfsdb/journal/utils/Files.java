@@ -1,10 +1,13 @@
 package com.mawen.nfsdb.journal.utils;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
 import com.mawen.nfsdb.journal.exceptions.JournalException;
+import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
@@ -55,6 +58,53 @@ public abstract class Files {
 		}
 		catch (IOException e) {
 			throw new JournalException("Cannot delete dir contents: %s", file, e);
+		}
+	}
+
+	public static void writeStringToFile(File file, String s) throws JournalException {
+		try {
+			try (FileOutputStream fos = new FileOutputStream(file)) {
+				fos.write(s.getBytes(UTF_8));
+			}
+		}
+		catch (IOException e) {
+			throw new JournalException("Cannot write to %s", e, file.getAbsolutePath());
+		}
+	}
+
+	public static String readStringFromFile(File file) throws JournalException {
+		try {
+			try (FileInputStream fis = new FileInputStream(file)) {
+				byte[] buffer = new byte[(int) fis.getChannel().size()];
+				byte b;
+				int index = 0;
+				while ((b = (byte) fis.read()) != -1) {
+					buffer[index++] = b;
+				}
+				return new String(buffer, UTF_8);
+			}
+		}
+		catch (IOException e) {
+			throw new JournalException("Cannot read from %s", e, file.getAbsolutePath());
+		}
+	}
+
+	public static File makeTempDir() {
+		File result;
+		try {
+			result = File.createTempFile("journal", "");
+			deleteOrException(result);
+			mkDirsOrException(result);
+		}
+		catch (Exception e) {
+			throw new JournalRuntimeException("Exception when creating temp dir", e);
+		}
+		return result;
+	}
+
+	public static void mkDirsOrException(File dir) {
+		if (!dir.mkdirs()) {
+			throw new JournalRuntimeException("Cannot create temp directory %s", dir);
 		}
 	}
 
