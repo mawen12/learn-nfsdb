@@ -4,6 +4,8 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import com.mawen.nfsdb.journal.column.SymbolIndex;
+import com.mawen.nfsdb.journal.exceptions.JournalException;
+import com.mawen.nfsdb.journal.factory.JournalMetadata;
 import com.mawen.nfsdb.journal.logging.Logger;
 
 /**
@@ -47,6 +49,25 @@ public class SymbolIndexProxy<T> implements Closeable {
 				"index=" + index +
 				", lastAccessed=" + lastAccessed +
 				'}';
+	}
+
+	public int getColumnIndex() {
+		return columnIndex;
+	}
+
+	SymbolIndex getIndex() throws JournalException {
+		lastAccessed = partition.getJournal().getTimerCache().getMillis();
+		if (index == null) {
+			JournalMetadata<T> meta = partition.getJournal().getMetadata();
+			index = new SymbolIndex(
+					meta.getColumnIndexBase(partition.getPartitionDir(), columnIndex),
+					meta.getColumnMetadata(columnIndex).distinctCountHint,
+					meta.getRecordHint(),
+					partition.getJournal().getMode(),
+					txAddress
+			);
+		}
+		return index;
 	}
 
 	SymbolIndexProxy(Partition<T> partition, int columnIndex, long txAddress) {
