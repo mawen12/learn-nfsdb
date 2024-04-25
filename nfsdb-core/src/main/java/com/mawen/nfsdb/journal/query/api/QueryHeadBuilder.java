@@ -1,5 +1,6 @@
 package com.mawen.nfsdb.journal.query.api;
 
+import com.mawen.nfsdb.journal.UnorderedResultSet;
 import com.mawen.nfsdb.journal.exceptions.JournalException;
 import org.joda.time.Interval;
 

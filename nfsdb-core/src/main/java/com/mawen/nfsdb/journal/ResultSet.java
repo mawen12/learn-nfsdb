@@ -3,7 +3,6 @@ package com.mawen.nfsdb.journal;
 import java.util.Iterator;
 import java.util.Random;
 
-import com.mawen.nfsdb.journal.column.SymbolIndex;
 import com.mawen.nfsdb.journal.column.SymbolTable;
 import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.iterators.ParallelIterator;
@@ -23,7 +22,7 @@ public class ResultSet<T> implements Iterable<T> {
 	private final Journal<T> journal;
 	private final TLongList rowIDs;
 
-	public T[] read() {
+	public T[] read() throws JournalException {
 		return journal.read(rowIDs);
 	}
 
@@ -78,42 +77,42 @@ public class ResultSet<T> implements Iterable<T> {
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getLong(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public long getLong(int rsIndex, int columnIndex, long defaultValue) {
+	public long getLong(int rsIndex, int columnIndex, long defaultValue) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getLong(Rows.toLocalRowID(rowID), columnIndex, defaultValue);
 	}
 
-	public long getInt(int rsIndex, int columnIndex) {
+	public long getInt(int rsIndex, int columnIndex) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getInt(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public long getInt(int rsIndex, int columnIndex, int defaultValue) {
+	public long getInt(int rsIndex, int columnIndex, int defaultValue) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getInt(Rows.toLocalRowID(rowID), columnIndex, defaultValue);
 	}
 
-	public String getString(int rsIndex, int columnIndex) {
+	public String getString(int rsIndex, int columnIndex) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getString(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public String getSymbol(int rsIndex, int columnIndex) {
+	public String getSymbol(int rsIndex, int columnIndex) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getSymbol(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public boolean isNull(int rsIndex, int columnIndex) {
+	public boolean isNull(int rsIndex, int columnIndex) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).isNull(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public double getDouble(int rsIndex, int columnIndex) {
+	public double getDouble(int rsIndex, int columnIndex) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getDouble(Rows.toLocalRowID(rowID), columnIndex);
 	}
 
-	public double getDouble(int rsIndex, int columnIndex, double defaultValue) {
+	public double getDouble(int rsIndex, int columnIndex, double defaultValue) throws JournalException {
 		long rowID = rowIDs.get(rsIndex);
 		return journal.getPartition(Rows.toPartitionIndex(rowID), true).getDouble(Rows.toLocalRowID(rowID), columnIndex, defaultValue);
 	}
@@ -167,7 +166,7 @@ public class ResultSet<T> implements Iterable<T> {
 
 	/////////////////////////////////////////////////////////////////
 
-	void quickSort(Order order, int lo, int hi, int... columnIndices) {
+	void quickSort(Order order, int lo, int hi, int... columnIndices) throws JournalException {
 
 		if (lo >= hi) {
 			return;

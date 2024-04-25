@@ -1,6 +1,7 @@
 package com.mawen.nfsdb.journal;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 import com.mawen.nfsdb.journal.concurrent.PartitionCleaner;
@@ -9,6 +10,7 @@ import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.factory.JournalMetadata;
 import com.mawen.nfsdb.journal.locks.Lock;
 import com.mawen.nfsdb.journal.logging.Logger;
+import com.mawen.nfsdb.journal.tx.TxFuture;
 import com.mawen.nfsdb.journal.tx.TxListener;
 
 /**
@@ -39,6 +41,49 @@ public class JournalWriter<T> extends Journal<T> {
 
 	@Override
 	public void close() throws IOException {
+		if (partitionCleaner != null) {
+			partitionCleaner.halt();
+			partitionCleaner = null;
+		}
 
+	}
+
+	public TxFuture commitAsync() throws JournalException {
+		TxFuture future = null;
+		if (txActive) {
+
+		}
+	}
+
+	private void splitAppendMerge(Iterator<T> a, Iterator<T> b, long hard, long soft, Partition<T> temp) {
+		splitAppend(new MergingIterator<>());
+	}
+
+	private void replaceIrregularPartition(Partition<T> temp) {
+		setIrregularPartition(temp);
+		purgeTempPartitions();
+	}
+
+	private void splitAppend(Iterator<T> it, long hard, long soft, Partition<T> partition) throws JournalException {
+		while (it.hasNext()) {
+			T obj = it.next();
+			if (doDiscard && getTimestamp(obj) < hard) {
+				// discard
+				continue;
+			}
+			else if (doDiscard) {
+				doDiscard = false;
+			}
+
+			if (doJournal && getTimestamp(obj) < soft) {
+				append(obj);
+				continue;
+			}
+			else if (doJournal) {
+				doJournal = false;
+			}
+
+			partition.append(obj);
+		}
 	}
 }

@@ -335,7 +335,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return -1;
 	}
 
-	public TempPartition<T> createTempPartition(String name) {
+	public TempPartition<T> createTempPartition(String name) throws JournalException {
 		int lag = getMetadata().getLagHours();
 		if (lag <= 0) {
 			throw new JournalRuntimeException("Journal doesn't support temp partitions: %s", this);
