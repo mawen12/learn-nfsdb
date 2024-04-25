@@ -26,7 +26,7 @@ public class Tx {
 	// 2 + 4 * symbolTableSizes.len
 	public int[] symbolTableSizes;
 	// 2 + 8 * symbolTableIndexPointers.len
-	public long[] symbolTableIndexPositions;
+	public long[] symbolTableIndexPointers;
 	// 2 + 8 * indexPointers.len
 	public long[] indexPointers;
 	// 2 + 8 * lagIndexPointers.len
@@ -43,7 +43,7 @@ public class Tx {
 				", lagSize=" + lagSize +
 				", lagName='" + lagName + '\'' +
 				", symbolTableSizes=" + Arrays.toString(symbolTableSizes) +
-				", symbolTableIndexPositions=" + Arrays.toString(symbolTableIndexPositions) +
+				", symbolTableIndexPositions=" + Arrays.toString(symbolTableIndexPointers) +
 				", indexPointers=" + Arrays.toString(indexPointers) +
 				", lagIndexPointers=" + Arrays.toString(lagIndexPointers) +
 				", size " + size() +
@@ -54,7 +54,7 @@ public class Tx {
 		return 8 + 1 + 8 + 8 + 8 + 8
 				+ 1 + 1 + 64
 				+ 2 + 4 * (symbolTableSizes == null ? 0 : symbolTableSizes.length)
-				+ 2 + 8 * (symbolTableIndexPositions == null ? 0 : symbolTableIndexPositions.length)
+				+ 2 + 8 * (symbolTableIndexPointers == null ? 0 : symbolTableIndexPointers.length)
 				+ 2 + 8 * (indexPointers == null ? 0 : indexPointers.length)
 				+ 2 + 8 * (lagIndexPointers == null ? 0 : lagIndexPointers.length);
 	}

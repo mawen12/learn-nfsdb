@@ -72,9 +72,9 @@ public class TxLog {
 
 		// symbolTableIndexPointers
 		sz = buffer.getChar();
-		tx.symbolTableIndexPositions = new long[sz];
+		tx.symbolTableIndexPointers = new long[sz];
 		for (int i = 0; i < sz; i++) {
-			tx.symbolTableIndexPositions[i] = buffer.getLong();
+			tx.symbolTableIndexPointers[i] = buffer.getLong();
 		}
 
 		// indexPointers
@@ -133,7 +133,7 @@ public class TxLog {
 		}
 		// 2 + 4 * tx.symbolTableSizes.len
 		ByteBuffers.putIntW(buffer, tx.symbolTableSizes);
-		ByteBuffers.putLongW(buffer, tx.symbolTableIndexPositions);
+		ByteBuffers.putLongW(buffer, tx.symbolTableIndexPointers);
 		ByteBuffers.putLongW(buffer, tx.indexPointers);
 		ByteBuffers.putLongW(buffer, tx.lagIndexPointers);
 

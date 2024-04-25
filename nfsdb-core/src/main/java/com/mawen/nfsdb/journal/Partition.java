@@ -4,27 +4,30 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 import com.mawen.nfsdb.journal.column.AbstractColumn;
 import com.mawen.nfsdb.journal.column.FixedWidthColumn;
-import com.mawen.nfsdb.journal.column.MappedFile;
 import com.mawen.nfsdb.journal.column.MappedFileImpl;
 import com.mawen.nfsdb.journal.column.NullsColumn;
 import com.mawen.nfsdb.journal.column.SymbolIndex;
+import com.mawen.nfsdb.journal.column.SymbolTable;
 import com.mawen.nfsdb.journal.column.VarcharColumn;
 import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
 import com.mawen.nfsdb.journal.factory.JournalMetadata;
 import com.mawen.nfsdb.journal.factory.NullsAdaptor;
 import com.mawen.nfsdb.journal.iterators.ParallelIterator;
+import com.mawen.nfsdb.journal.iterators.PartitionBufferedIterator;
+import com.mawen.nfsdb.journal.iterators.PartitionIterator;
+import com.mawen.nfsdb.journal.iterators.PartitionParallelIterator;
 import com.mawen.nfsdb.journal.logging.Logger;
 import com.mawen.nfsdb.journal.utils.ByteBuffers;
 import com.mawen.nfsdb.journal.utils.Dates;
 import com.mawen.nfsdb.journal.utils.Rows;
+import com.mawen.nfsdb.journal.utils.Unsafe;
 import org.joda.time.Interval;
 
 /**
@@ -50,6 +53,109 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		return nullsColumn;
 	}
 
+	public Journal<T> getJournal() {
+		return journal;
+	}
+
+	public Interval getInterval() {
+		return interval;
+	}
+
+	public int getPartitionIndex() {
+		return partitionIndex;
+	}
+
+	public void setPartitionIndex(int partitionIndex) {
+		this.partitionIndex = partitionIndex;
+	}
+
+	public File getPartitionDir() {
+		return partitionDir;
+	}
+
+	public String getName() {
+		return partitionDir.getName();
+	}
+
+	public boolean isOpen() {
+		return columns != null;
+	}
+
+	public String getString(long localRowID, int columnIndex) {
+		checkColumnIndex(columnIndex);
+		if (getNullsColumn().getBitSet(localRowID).get(columnIndex)) {
+			return null;
+		}
+		else {
+			return ((VarcharColumn) columns[columnIndex]).getString(localRowID);
+		}
+	}
+
+	public String getSymbol(long localRowID, int columnIndex) {
+		checkColumnIndex(columnIndex);
+		if (getNullsColumn().getBitSet(localRowID).get(columnIndex)) {
+			return null;
+		}
+		else {
+			int symbolIndex = ((FixedWidthColumn) columns[columnIndex]).getInt(localRowID);
+			if (symbolIndex == SymbolTable.VALUE_NOT_FOUND) {
+				return null;
+			}
+			else {
+				return journal.getColumnMetadata(columnIndex).symbolTable.value(symbolIndex);
+			}
+		}
+	}
+
+	public long getLong(long localRowID, int columnIndex) {
+		return getFixedColumnOrNPE(localRowID, columnIndex).getLong(localRowID);
+	}
+
+	public long getLong(long localRowID, int columnIndex, long defaultValue) {
+		FixedWidthColumn column = getFixedColumnOrNull(localRowID, columnIndex);
+		return column == null ? defaultValue : column.getLong(localRowID);
+	}
+
+	public int getInt(long localRowID, int columnIndex) {
+		return getFixedColumnOrNPE(localRowID, columnIndex).getInt(localRowID);
+	}
+
+	public int getInt(long localRowID, int columnIndex, int defaultValue) {
+		FixedWidthColumn column = getFixedColumnOrNull(localRowID, columnIndex);
+		return column == null ? defaultValue : column.getInt(localRowID);
+	}
+
+	public double getDouble(long localRowID, int columnIndex) {
+		return getFixedColumnOrNPE(localRowID, columnIndex).getDouble(localRowID);
+	}
+
+	public double getDouble(long localRowID, int columnIndex, double defaultValue) {
+		FixedWidthColumn column = getFixedColumnOrNull(localRowID, columnIndex);
+		return column == null ? defaultValue : column.getDouble(localRowID);
+	}
+
+	public boolean isNull(long localRowID, int columnIndex) {
+		checkColumnIndex(columnIndex);
+		return nullsColumn.getBitSet(Rows.toLocalRowID(localRowID)).get(columnIndex);
+	}
+
+	public AbstractColumn getAbstractColumn(int i) {
+		checkColumnIndex(i);
+		return columns[i];
+	}
+
+	public SymbolIndex getIndexForColumn(String columnName) {
+		return getIndexForColumn(journal.getMetadata().getColumnIndex(columnName));
+	}
+
+	public SymbolIndex getIndexForColumn(final int columnIndex) throws JournalException {
+		SymbolIndexProxy h = columnIndexProxies.get(columnIndex);
+		if (h == null) {
+			throw new JournalException("There is no index for column '%s' in %s", journal.getMetadata().getColumnMetadata(columnIndex).name, this);
+		}
+		return h.getIndex();
+	}
+
 	public Partition<T> open() throws JournalException {
 		access();
 
@@ -60,28 +166,303 @@ public class Partition<T> implements Iterable<T>, Closeable {
 			int nullsRecordSize = ((columns.length >>> 6) + (columns.length % 64 == 0 ? 0 : 1)) * 8;
 			nullsColumn = new NullsColumn(
 					new MappedFileImpl(new File(partitionDir, "_nulls.d"),
-							ByteBuffers.getBitHint(nullsRecordSize,journal.getMetadata().getRecordHint()), journal.getMode()),
+							ByteBuffers.getBitHint(nullsRecordSize, journal.getMetadata().getRecordHint()), journal.getMode()),
 					nullsRecordSize,
 					columns.length
 			);
-
 
 		}
 		return this;
 	}
 
+	public <T> T read(long localRowID) {
+		T obj = journal.newObject();
+		read(localRowID, obj);
+		return obj;
+	}
+
+	public void read(long localRowID, T obj) {
+
+		BitSet nulls = nullsColumn.getBitSet(localRowID);
+		for (int i = 0, count = journal.getMetadata().getColumnCount(); i < count; i++) {
+
+			// fail fast
+			if (columns[i] == null || nulls.get(i)) {
+				continue;
+			}
+			Journal.ColumnMetadata m = journal.getColumnMetadata(i);
+			switch (m.meta.type) {
+				case BOOLEAN:
+					Unsafe.getUnsafe().putBoolean(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getBool(localRowID));
+					break;
+				case BYTE:
+					Unsafe.getUnsafe().putByte(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getByte(localRowID));
+					break;
+				case DOUBLE:
+					Unsafe.getUnsafe().putDouble(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getDouble(localRowID));
+					break;
+				case INT:
+					Unsafe.getUnsafe().putInt(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getInt(localRowID));
+					break;
+				case LONG:
+					Unsafe.getUnsafe().putLong(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getLong(localRowID));
+					break;
+				case SHORT:
+					Unsafe.getUnsafe().putShort(obj, m.meta.offset, ((FixedWidthColumn)columns[i]).getShort(localRowID));
+					break;
+				case STRING:
+					String s = ((VarcharColumn) columns[i]).getString(localRowID);
+					if (s != null) {
+						Unsafe.getUnsafe().putObject(obj, m.meta.offset, s);
+					}
+					break;
+				case SYMBOL:
+					int symbolIndex = ((FixedWidthColumn) columns[i]).getInt(localRowID);
+					// check if symbol is null
+					if (symbolIndex > SymbolTable.VALUE_IS_NULL) {
+						Unsafe.getUnsafe().putObject(obj, m.meta.offset, m.symbolTable.value(symbolIndex));
+					}
+					break;
+			}
+		}
+		journal.getMetadata().getNullsAdaptor().setNulls(obj, nulls);
+	}
+
+	public void append(Iterator<T> it) throws JournalException {
+
+	}
+
+	public void append(T obj) throws JournalException {
+		int columnCount = journal.getMetadata().getColumnCount();
+		nulls.clear();
+		nullsAdaptor.getNulls(obj, nulls);
+		for (int i = 0; i < columnCount; i++) {
+			Journal.ColumnMetadata meta = journal.getColumnMetadata(i);
+			switch (meta.meta.type) {
+				case BOOLEAN:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putBool(Unsafe.getUnsafe().getBoolean(obj, meta.meta.offset));
+					}
+					break;
+				case BYTE:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putByte(Unsafe.getUnsafe().getByte(obj, meta.meta.offset));
+					}
+					break;
+				case DOUBLE:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putDouble(Unsafe.getUnsafe().getDouble(obj, meta.meta.offset));
+					}
+					break;
+				case INT:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putInt(Unsafe.getUnsafe().getInt(obj, meta.meta.offset));
+					}
+					break;
+				case LONG:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putLong(Unsafe.getUnsafe().getLong(obj, meta.meta.offset));
+					}
+					break;
+				case SHORT:
+					if (nulls.get(i)) {
+						((FixedWidthColumn)columns[i]).putNull();
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putShort(Unsafe.getUnsafe().getShort(obj, meta.meta.offset));
+					}
+					break;
+				case STRING:
+					String s = (String) Unsafe.getUnsafe().getObject(obj, meta.meta.offset);
+					if (s == null) {
+						nulls.set(i);
+						((VarcharColumn)columns[i]).putNull();
+					}
+					else if (s.length() > meta.meta.maxSize) {
+						throw new JournalException("String value too large: %s [%d]", meta.meta.name, s.length());
+					}
+					else {
+						((VarcharColumn)columns[i]).putString(s);
+					}
+				case SYMBOL:
+					String sym = (String) Unsafe.getUnsafe().getObject(obj, meta.meta.offset);
+					if (sym == null) {
+						nulls.set(i);
+						((FixedWidthColumn)columns[i]).putInt(SymbolTable.VALUE_IS_NULL);
+					}
+					else {
+						((FixedWidthColumn)columns[i]).putInt(meta.symbolTable.put(sym));
+					}
+					if (meta.meta.indexed) {
+						columnIndexProxies.get(i).getIndex().put(meta.symbolTable.put(sym), columns[i].size());
+					}
+					break;
+			}
+		}
+		nullsColumn.putBitSet(nulls);
+		commitColumns();
+		clearTx();
+	}
+
+	public void commitColumns() {
+		nullsColumn.commit();
+		// have to commit columns from fist to last
+		// this is because size of partition is calculated by size of last column.
+		// If below loop is to break in the middle partition will assume the smallest column size.
+		for (int i = 0, columnsLength = columns.length; i < columnsLength; i++) {
+			AbstractColumn col = columns[i];
+			if (col != null) {
+				col.commit();
+			}
+		}
+	}
+
+	public void applyTx(long txLimit, long[] indexTxAddresses) {
+		if (this.txLimit != txLimit) {
+			this.txLimit = txLimit;
+			for (int i = 0, indexProxiesSize = indexProxies.size(); i < indexProxiesSize; i++) {
+				SymbolIndexProxy<T> proxy = indexProxies.get(i);
+				proxy.setTxAddress(indexTxAddresses == null ? 0 : indexTxAddresses[proxy.getColumnIndex()]);
+			}
+		}
+	}
+
+	public long indexOf(long timestamp, BinarySearch.SearchType type) {
+		final FixedWidthColumn column = getTimestampColumn();
+
+		return BinarySearch.indexOf(new BinarySearch.LongTimeSeriesProvider() {
+			@Override
+			public long readLong(long index) {
+				return column.getLong(index);
+			}
+
+			@Override
+			public long size() {
+				return column.size();
+			}
+		}, timestamp, type);
+	}
+
+	public FixedWidthColumn getTimestampColumn() {
+		return getFixedWidthColumn(journal.getMetadata().getTimestampColumnIndex());
+	}
+
+	public void rebuildIndexes() throws JournalException {
+		if (!isOpen()) {
+			throw new JournalException("Cannot rebuild indexes in closed partition: %s", this);
+		}
+		JournalMetadata<T> m = journal.getMetadata();
+		for (int i = 0; i < m.getColumnCount(); i++) {
+			if (m.getColumnMetadata(i).indexed) {
+				rebuildIndex(i);
+			}
+		}
+	}
+
+	/**
+	 * Rebuild the index of a column using the default keyCountHint and recordCountHint values from nfsdb.xml
+	 *
+	 * @param columnIndex the column index
+	 */
+	public void rebuildIndex(int columnIndex) {
+		rebuildIndex(columnIndex,
+				journal.getMetadata().getColumnMetadata(columnIndex).distinctCountHint,
+				journal.getMetadata().getRecordHint());
+	}
+
+	public void rebuildIndex(int columnIndex, int keyCountHint, int recordCountHint) throws JournalException {
+		final long time = LOGGER.isInfoEnabled() ? System.nanoTime() : 0L;
+
+		getIndexForColumn(columnIndex).close();
+
+		File base = journal.getMetadata().getColumnIndexBase(partitionDir, columnIndex);
+		SymbolIndex.delete(base);
+
+		try (SymbolIndex index = new SymbolIndex(base, keyCountHint, recordCountHint, JournalMode.APPEND, 0)) {
+			FixedWidthColumn col = getFixedWidthColumn(columnIndex);
+			for (long localRowID = 0, sz = size(); localRowID < sz; localRowID++) {
+				index.put(col.getInt(localRowID), localRowID);
+			}
+			index.commit();
+		}
+
+		LOGGER.debug("REBUILT %s, [%dms]", base, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - time));
+	}
+
+	public long size() {
+		if (!isOpen()) {
+			throw new JournalRuntimeException("Closed partition: %s", this);
+		}
+
+		if (txLimit != Journal.TX_LIMIT_EVAL) {
+			return txLimit;
+		}
+
+		long sz = 0;
+		for (int i = columns.length -1 ; i >= 0; i--) {
+			AbstractColumn c = columns[i];
+			if (c != null) {
+				sz = c.size();
+				break;
+			}
+		}
+
+		txLimit = sz;
+		return sz;
+	}
+
+	public long getLastAccessed() {
+		return lastAccessed;
+	}
+
+
 	@Override
-	public void close() throws IOException {
+	public void close() {
 
 	}
 
 	@Override
 	public Iterator<T> iterator() {
-		return null;
+		return new PartitionIterator<>(this, 0, size() - 1);
+	}
+
+	public Iterator<T> iterator(long start, long end) {
+		return new PartitionIterator<>(this, start, end);
+	}
+
+	public PartitionBufferedIterator<T> bufferedIterator() {
+		return new PartitionBufferedIterator<>(this, 0, size() - 1);
+	}
+
+	public PartitionBufferedIterator<T> bufferedIterator(long start, long end) {
+		return new PartitionBufferedIterator<>(this, start, end);
 	}
 
 	public ParallelIterator<T> parallelIterator() {
+		return parallelIterator(0, size() - 1);
+	}
 
+	public ParallelIterator<T> parallelIterator(long lo, long hi) {
+		return parallelIterator(lo, hi, 1024);
+	}
+
+	public ParallelIterator<T> parallelIterator(long lo, long hi, int bufferSize) {
+		return new PartitionParallelIterator<>(this, lo, hi, bufferSize);
 	}
 
 	public void compact() throws JournalException {
@@ -156,7 +537,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 	}
 
 	void expireOpenIndices() throws IOException {
-		 long expiry = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(journal.getMetadata().getOpenPartitionTTL());
+		long expiry = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(journal.getMetadata().getOpenPartitionTTL());
 		for (int i = 0, indexProxiesSize = indexProxies.size(); i < indexProxiesSize; i++) {
 			SymbolIndexProxy<T> proxy = indexProxies.get(i);
 			if (expiry > proxy.getLastAccessed()) {
@@ -172,7 +553,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		}
 	}
 
-	void commit() throws JournalException{
+	void commit() throws JournalException {
 		for (int i = 0, indexProxiesSize = indexProxies.size(); i < indexProxiesSize; i++) {
 			SymbolIndexProxy<T> proxy = indexProxies.get(i);
 			proxy.getIndex().commit();
@@ -207,9 +588,9 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		switch (m.type) {
 			case STRING:
 				columns[columnIndex] = new VarcharColumn(
-					new MappedFileImpl(new File(partitionDir, m.name + ".d"), m.bitHint, journal.getMode()),
-					new MappedFileImpl(new File(partitionDir, m.name + ".i"), m.indexBitHint, journal.getMode()),
-					m.maxSize
+						new MappedFileImpl(new File(partitionDir, m.name + ".d"), m.bitHint, journal.getMode()),
+						new MappedFileImpl(new File(partitionDir, m.name + ".i"), m.indexBitHint, journal.getMode()),
+						m.maxSize
 				);
 				break;
 			default:
