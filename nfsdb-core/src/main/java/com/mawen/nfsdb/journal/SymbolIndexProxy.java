@@ -23,7 +23,7 @@ public class SymbolIndexProxy<T> implements Closeable {
 	private long txAddress;
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		if (index != null) {
 			LOGGER.trace("Closing " + this);
 			index.close();

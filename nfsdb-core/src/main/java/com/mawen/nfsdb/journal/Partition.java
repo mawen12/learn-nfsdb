@@ -536,7 +536,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		}
 	}
 
-	void expireOpenIndices() throws IOException {
+	void expireOpenIndices() {
 		long expiry = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(journal.getMetadata().getOpenPartitionTTL());
 		for (int i = 0, indexProxiesSize = indexProxies.size(); i < indexProxiesSize; i++) {
 			SymbolIndexProxy<T> proxy = indexProxies.get(i);

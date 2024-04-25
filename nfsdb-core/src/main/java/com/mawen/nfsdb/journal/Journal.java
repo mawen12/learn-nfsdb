@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.mawen.nfsdb.journal.column.ColumnType;
 import com.mawen.nfsdb.journal.column.FixedWidthColumn;
@@ -55,16 +56,38 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	private final Query<T> query = new QueryImpl<>(this);
 	private final TimerCache timerCache;
 	private final long timestampOffset;
-	private final Comparator<T> timestampComparator = (o1, o2) -> {
-		long x = Unsafe.getUnsafe().getLong(o1, timestampOffset);
-		long y = Unsafe.getUnsafe().getLong(o2, timestampOffset);
-		return (x < y) ? -1 : (x == y) ? 0 : 1;
+	private final Comparator<T> timestampComparator = new Comparator<>() {
+		@Override
+		public int compare(T o1, T o2) {
+			long x = Unsafe.getUnsafe().getLong(o1, timestampOffset);
+			long y = Unsafe.getUnsafe().getLong(o2, timestampOffset);
+			return (x < y) ? -1 : (x == y) ? 0 : 1;
+		}
 	};
 	private boolean open;
 	private String[] readColumns;
 	private ColumnMetadata[] columnMetadata;
 	private Partition<T> irregularPartition;
 	private JournalClosingListener closeListener;
+
+	public Journal(JournalKey<T> key, JournalMetadata<T> metadata, TimerCache timerCache) throws JournalException {
+		this.metadata = metadata;
+		this.key = key;
+		this.location = new File(metadata.getLocation());
+		this.timerCache = timerCache;
+		this.txLog = new TxLog(location, getMode());
+		this.open = true;
+		this.timestampOffset = getMetadata().getTimestampColumnMetadata() == null ? -1 : getMetadata().getTimestampColumnMetadata().offset;
+		configure();
+	}
+
+	public void setCloseListener(JournalClosingListener closeListener) {
+		this.closeListener = closeListener;
+	}
+
+	public long getTimestamp(T o) {
+		return Unsafe.getUnsafe().getLong(o, timestampOffset);
+	}
 
 	@Override
 	public void close() throws IOException {
@@ -116,32 +139,120 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return symbolTables.get(index);
 	}
 
-	public <X> X iteratePartitions(AbstractResultSetBuilder<T, X> builder) {
-
+	public <X> X iteratePartitions(AbstractResultSetBuilder<T, X> builder) throws JournalException {
+		builder.setJournal(this);
+		int count = getPartitionCount();
+		for (int i = 0; i < count; i++) {
+			if (builder.next(getPartition(i, false), true)) {
+				break;
+			}
+		}
+		return builder.getResult();
 	}
 
-	@Override
-	public Iterator<T> iterator() {
-		return query().all().iterator();
+	public int getPartitionCount() {
+		if (irregularPartition == null) {
+			return nonLagPartitionCount();
+		}
+		else {
+			return nonLagPartitionCount() + 1;
+		}
 	}
 
-	public Query<T> query() {
-		return query;
+	public Partition<T> getPartition(int partitionIndex, boolean open) throws JournalException {
+		if (irregularPartition != null && partitionIndex == nonLagPartitionCount()) {
+			return open ? irregularPartition.open() : irregularPartition;
+		}
+
+		Partition<T> partition = partitions.get(partitionIndex).access();
+		if (open) {
+			partition.open();
+		}
+		return partition;
 	}
 
-	public JournalIterator<T> bufferedIterator() {
-		return query().all().bufferedIterator();
+	public int nonLagPartitionCount() {
+		return partitions.size();
 	}
 
-	public ParallelIterator<T> parallelIterator() {
-		return query().all().parallelIterator();
+	/**
+	 * Set the name of all the columns that have to be read (only in RO flow mode).
+	 *
+	 * @param readColumns the names of all the columns that have to be read.
+	 */
+	public Journal<T> setReadColumns(String... readColumns) {
+		this.readColumns = readColumns;
+		return this;
 	}
 
-	public void read(long localRowId, T obj) {
-		get
+	public <X> X iteratePartitionsDesc(AbstractResultSetBuilder<T, X> builder) throws JournalException {
+		builder.setJournal(this);
+		int count = getPartitionCount();
+		for (int i = count; i >= 0; i--) {
+			if (builder.next(getPartition(i, false), false)) {
+				break;
+			}
+		}
+		return builder.getResult();
 	}
 
-	public T[] read(TLongList rowIDs) {
+	public Partition<T> lagNonEmptyNonLag() throws JournalException {
+
+		if (nonLagPartitionCount() > 0) {
+
+			Partition<T> result = getPartition(nonLagPartitionCount() - 1, true);
+
+			while (true) {
+				if (result.size() > 0) {
+					return result;
+				}
+
+				if (result.getPartitionIndex() == 0) {
+					break;
+				}
+
+				result = getPartition(result.getPartitionIndex() - 1, true);
+			}
+
+			return result;
+		}
+		else {
+			return null;
+		}
+	}
+
+	public Partition<T> getIrregularPartition() {
+		return irregularPartition;
+	}
+
+	public void setIrregularPartition(Partition<T> partition) {
+		removeIrregularPartitionInternal();
+		irregularPartition = partition;
+		irregularPartition.setPartitionIndex(nonLagPartitionCount());
+	}
+
+	public boolean hasIrregularPartition() {
+		return irregularPartition != null;
+	}
+
+	public void expireOpenFiles() {
+		long expiry = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(getMetadata().getOpenPartitionTTL());
+		for (int i = 0, partitionSize = partitions.size(); i < partitionSize; i++) {
+			Partition<T> partition = partitions.get(i);
+			if (expiry > partition.getLastAccessed() && partition.isOpen()) {
+				partition.close();
+			}
+			else {
+				partition.expireOpenIndices();
+			}
+		}
+	}
+
+	public void read(long rowID, T obj) throws JournalException {
+		getPartition(Rows.toPartitionIndex(rowID), true).read(Rows.toLocalRowID(rowID), obj);
+	}
+
+	public T[] read(TLongList rowIDs) throws JournalException {
 		T[] result = (T[]) Array.newInstance(metadata.getModelClass(), rowIDs.size());
 		for (int i = 0; i < rowIDs.size(); i++) {
 			result[i] = read(rowIDs.get(i));
@@ -149,7 +260,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return result;
 	}
 
-	public T read(long rowID) {
+	public T read(long rowID) throws JournalException {
 		return getPartition(Rows.toPartitionIndex(rowID), true).read(Rows.toLocalRowID(rowID));
 	}
 
@@ -157,7 +268,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return open;
 	}
 
-	public long size() {
+	public long size() throws JournalException {
 		long result = 0;
 		for (int i = 0; i < getPartitionCount(); i++) {
 			result += getPartition(i, true).size();
@@ -165,8 +276,83 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return result;
 	}
 
-	public TempPartition<T> createTempPartition(String name) {
+	public JournalKey<T> getKey() {
+		return key;
+	}
 
+	@Override
+	public String toString() {
+		return getClass().getName() + "[" +
+				"location=" + location +
+				", mode=" + getMode() +
+				", metadata=" + metadata +
+				']';
+	}
+
+	/**
+	 * Get the Journal's flow model (the probable query style)
+	 *
+	 * @return the Journal's flow model
+	 */
+	public JournalMode getMode() {
+		return JournalMode.READ;
+	}
+
+	public long incrementRowID(long rowID) throws JournalException {
+		int partitionIndex = Rows.toPartitionIndex(rowID);
+		long localRowID = Rows.toLocalRowID(rowID);
+
+		Partition p = getPartition(partitionIndex, open);
+		if (localRowID < p.size() - 1) {
+			return Rows.toRowID(partitionIndex, localRowID + 1);
+		}
+
+		while (++partitionIndex < getPartitionCount()) {
+			p = getPartition(partitionIndex, true);
+			if (p.size() > 0) {
+				return Rows.toRowID(partitionIndex, 0);
+			}
+		}
+
+		return -1;
+	}
+
+	public long decrementRowID(long rowID) throws JournalException {
+		int partitionIndex = Rows.toPartitionIndex(rowID);
+		long localRowID = Rows.toLocalRowID(rowID);
+
+		if (localRowID > 0) {
+			return Rows.toRowID(partitionIndex, localRowID - 1);
+		}
+
+		while (--partitionIndex >= 0) {
+			Partition p = getPartition(partitionIndex, true);
+			if (p.size() > 0) {
+				return Rows.toRowID(partitionIndex, p.size() - 1);
+			}
+		}
+
+		return -1;
+	}
+
+	public TempPartition<T> createTempPartition(String name) {
+		int lag = getMetadata().getLagHours();
+		if (lag <= 0) {
+			throw new JournalRuntimeException("Journal doesn't support temp partitions: %s", this);
+		}
+
+		Interval interval = null;
+		if (getMetadata().getPartitionType() != PartitionType.NONE) {
+			if (nonLagPartitionCount() > 0) {
+				Interval lastPartitionInterval = partitions.get(nonLagPartitionCount() - 1).getInterval();
+				interval = new Interval(lastPartitionInterval.getStart(), lastPartitionInterval.getEnd().plusHours(lag));
+			}
+			else {
+				interval = Dates.intervalForDate(System.currentTimeMillis(), getMetadata().getPartitionType());
+			}
+		}
+
+		return new TempPartition<>(this, interval, nonLagPartitionCount(), name);
 	}
 
 	public JournalMetadata<T> getMetadata() {
@@ -191,11 +377,17 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return this.getMetadata().getModelClass().equals(that.getMetadata().getModelClass());
 	}
 
-	public long getMaxRowID() {
-
+	public long getMaxRowID() throws JournalException {
+		Partition<T> p = lastNonEmpty();
+		if (p == null) {
+			return -1;
+		}
+		else {
+			return Rows.toRowID(p.getPartitionIndex(), p.size() - 1);
+		}
 	}
 
-	public Partition<T> lastNonEmpty() {
+	public Partition<T> lastNonEmpty() throws JournalException {
 		Partition<T> result;
 
 		if (getPartitionCount() == 0) {
@@ -225,7 +417,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return result.size() > 0 ? result : null;
 	}
 
-	public long getMaxTimestamp() {
+	public long getMaxTimestamp() throws JournalException {
 
 		Partition<T> p = lastNonEmpty();
 		if (p == null) {
@@ -279,7 +471,22 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return columnMetadata[columnIndex];
 	}
 
+	@Override
+	public Iterator<T> iterator() {
+		return query().all().iterator();
+	}
 
+	public Query<T> query() {
+		return query;
+	}
+
+	public JournalIterator<T> bufferedIterator() {
+		return query().all().bufferedIterator();
+	}
+
+	public ParallelIterator<T> parallelIterator() {
+		return query().all().parallelIterator();
+	}
 
 	/////////////////////////////////////////////////////////////////
 
@@ -287,7 +494,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return timestampOffset;
 	}
 
-	protected void closePartition() {
+	protected void closePartitions() {
 		if (irregularPartition != null) {
 			irregularPartition.close();
 		}
@@ -297,7 +504,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		partitions.clear();
 	}
 
-	protected void configure() {
+	protected void configure() throws JournalException {
 		Tx tx = txLog.get();
 		configureColumns(tx);
 		configureSymbolTableSynonyms();
@@ -348,7 +555,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 
 	/////////////////////////////////////////////////////////////////
 
-	private void configureColumns(Tx tx) {
+	private void configureColumns(Tx tx) throws JournalException {
 		int columnCount = getMetadata().getColumnCount();
 		columnMetadata = new ColumnMetadata[columnCount];
 		for (int i = 0; i < columnCount; i++) {
@@ -443,9 +650,9 @@ public class Journal<T> implements Iterable<T>, Closeable {
 					// continue with replacing lag
 					if (lock != null && lock.isValid()) {
 						LOGGER.trace("Lock successful for %s", lagLocation.getName());
-						Partition<T> temp =  createTempPartition(lagPartitionName);
+						Partition<T> temp = createTempPartition(lagPartitionName);
 						temp.applyTx(tx.lagSize, tx.lagIndexPointers);
-						setIrregularPartion(temp);
+						setIrregularPartition(temp);
 						// exit out of while loop
 						break;
 					}
