@@ -8,7 +8,7 @@ import java.util.Arrays;
  */
 public class Tx {
 
-	private static final byte TX_NORMAL = 0;
+	public static final byte TX_NORMAL = 0;
 	// 8
 	public long prevTxAddress;
 	// 1

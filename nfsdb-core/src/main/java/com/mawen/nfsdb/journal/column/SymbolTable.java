@@ -160,7 +160,7 @@ public class SymbolTable implements Closeable {
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		if (data != null) {
 			data.close();
 		}
@@ -208,6 +208,11 @@ public class SymbolTable implements Closeable {
 
 	public long getIndexTxAddress() {
 		return index.getTxAddress();
+	}
+
+	public void commit() {
+		data.commit();
+		index.commit();
 	}
 
 	/////////////////////////////////////////////////////////////////

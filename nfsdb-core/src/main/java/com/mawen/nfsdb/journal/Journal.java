@@ -90,7 +90,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		if (open) {
 
 			if (closeListener != null) {
