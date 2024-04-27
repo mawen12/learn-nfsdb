@@ -2,7 +2,6 @@ package com.mawen.nfsdb.journal;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -440,7 +439,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	public void clearObject(T obj) {
 		for (int i = 0, count = metadata.getColumnCount(); i < count; i++) {
 			JournalMetadata.ColumnMetadata m = metadata.getColumnMetadata(i);
-			metadata.getNullsAdapter().clear(obj);
+			metadata.getNullsAdaptor().clear(obj);
 			switch (m.type) {
 				case BOOLEAN:
 					Unsafe.getUnsafe().putBoolean(obj, m.offset, false);

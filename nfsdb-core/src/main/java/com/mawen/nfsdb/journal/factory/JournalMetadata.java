@@ -35,7 +35,7 @@ public class JournalMetadata<T> {
 	private final String timestampColumn;
 	private final String key;
 	private final int openPartitionTTL;
-	private final NullsAdaptor<T> nullsAdapter;
+	private final NullsAdaptor<T> nullsAdaptor;
 	private String location;
 	private PartitionType partitionType;
 	private int recordHint;
@@ -52,7 +52,7 @@ public class JournalMetadata<T> {
 			int openPartitionTTL,
 			int lagHours,
 			String key,
-			NullsAdaptor<T> nullsAdapter) throws JournalConfigurationException {
+			NullsAdaptor<T> nullsAdaptor) throws JournalConfigurationException {
 		this.modelClass = modelClass;
 		this.location = location;
 		this.timestampColumn = timestampColumn;
@@ -61,7 +61,7 @@ public class JournalMetadata<T> {
 		this.openPartitionTTL = openPartitionTTL;
 		this.lagHours = lagHours;
 		this.key = key;
-		this.nullsAdapter = nullsAdapter;
+		this.nullsAdaptor = nullsAdaptor;
 		this.columnMetadataMap = new TObjectIntHashMap<>(10, 0.5f, INVALID_INDEX);
 		this.columnMetadataList = new ArrayList<>();
 		parseClass();
@@ -81,11 +81,11 @@ public class JournalMetadata<T> {
 		this.lagHours = that.lagHours;
 		this.key = that.key;
 		this.timestampColumnMetadata = that.timestampColumnMetadata;
-		this.nullsAdapter = that.nullsAdapter;
+		this.nullsAdaptor = that.nullsAdaptor;
 	}
 
-	public NullsAdaptor<T> getNullsAdapter() {
-		return nullsAdapter;
+	public NullsAdaptor<T> getNullsAdaptor() {
+		return nullsAdaptor;
 	}
 
 	public ColumnMetadata getColumnMetadata(String name) {
@@ -263,6 +263,23 @@ public class JournalMetadata<T> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "JournalMetadata{" +
+				"SHA'" + DatatypeConverter.printBase64Binary(CheckSum.getCheckSum(this)) + '\'' +
+				", columnMetadataList*=" + columnMetadataList +
+				", modelClass*=" + modelClass +
+				", timestampColumn='" + timestampColumn + '\'' +
+				", key='" + key + '\'' +
+				", openPartitionTTL=" + openPartitionTTL +
+				", nullsAdaptor=" + nullsAdaptor +
+				", location='" + location + '\'' +
+				", partitionType=" + partitionType +
+				", recordHint=" + recordHint +
+				", lagHours=" + lagHours +
+				'}';
+	}
+
 	private void adjustHintsForStrings() {
 		for (int i = 0, columnMetadataListSize = columnMetadataList.size(); i < columnMetadataListSize; i++) {
 			ColumnMetadata meta = columnMetadataList.get(i);
@@ -275,23 +292,6 @@ public class JournalMetadata<T> {
 					meta.bitHint = ByteBuffers.getBitHint(meta.size, recordHint);
 			}
 		}
-	}
-
-	@Override
-	public String toString() {
-		return "JournalMetadata{" +
-				"SHA'" + DatatypeConverter.printBase64Binary(CheckSum.getCheckSum(this)) + '\'' +
-				", columnMetadataList*=" + columnMetadataList +
-				", modelClass*=" + modelClass +
-				", timestampColumn='" + timestampColumn + '\'' +
-				", key='" + key + '\'' +
-				", openPartitionTTL=" + openPartitionTTL +
-				", nullsAdapter=" + nullsAdapter +
-				", location='" + location + '\'' +
-				", partitionType=" + partitionType +
-				", recordHint=" + recordHint +
-				", lagHours=" + lagHours +
-				'}';
 	}
 
 	/////////////////////////////////////////////////////////////////

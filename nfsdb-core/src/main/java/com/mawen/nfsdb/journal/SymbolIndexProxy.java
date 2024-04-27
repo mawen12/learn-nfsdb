@@ -1,7 +1,6 @@
 package com.mawen.nfsdb.journal;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 import com.mawen.nfsdb.journal.column.SymbolIndex;
 import com.mawen.nfsdb.journal.exceptions.JournalException;

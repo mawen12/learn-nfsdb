@@ -2,7 +2,6 @@ package com.mawen.nfsdb.journal.column;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 

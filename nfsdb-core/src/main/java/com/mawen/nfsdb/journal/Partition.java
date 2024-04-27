@@ -2,7 +2,6 @@ package com.mawen.nfsdb.journal;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -144,7 +143,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		return columns[i];
 	}
 
-	public SymbolIndex getIndexForColumn(String columnName) {
+	public SymbolIndex getIndexForColumn(String columnName) throws JournalException {
 		return getIndexForColumn(journal.getMetadata().getColumnIndex(columnName));
 	}
 
@@ -175,7 +174,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		return this;
 	}
 
-	public <T> T read(long localRowID) {
+	public T read(long localRowID) {
 		T obj = journal.newObject();
 		read(localRowID, obj);
 		return obj;
@@ -379,7 +378,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 	 *
 	 * @param columnIndex the column index
 	 */
-	public void rebuildIndex(int columnIndex) {
+	public void rebuildIndex(int columnIndex) throws JournalException {
 		rebuildIndex(columnIndex,
 				journal.getMetadata().getColumnMetadata(columnIndex).distinctCountHint,
 				journal.getMetadata().getRecordHint());
@@ -531,7 +530,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 				}
 			}
 
-			commitColumn();
+			commitColumns();
 			clearTx();
 		}
 	}
@@ -582,7 +581,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		}
 	}
 
-	private void open(int columnIndex) {
+	private void open(int columnIndex) throws JournalException {
 
 		JournalMetadata.ColumnMetadata m = journal.getMetadata().getColumnMetadata(columnIndex);
 		switch (m.type) {
@@ -646,7 +645,7 @@ public class Partition<T> implements Iterable<T>, Closeable {
 		this.nulls = new BitSet(journal.getMetadata().getColumnCount());
 		this.nullsAdaptor = journal.getMetadata().getNullsAdaptor();
 
-		String dateStr = Dates.dirNameForIntervalStart(interval, journal.getMetadata.getPartitionType());
+		String dateStr = Dates.dirNameForIntervalStart(interval, journal.getMetadata().getPartitionType());
 		if (dateStr.length() > 0) {
 			setPartitionDir(new File(this.journal.getLocation(), dateStr), indexTxAddresses);
 		}

@@ -1,7 +1,6 @@
 package com.mawen.nfsdb.journal;
 
 import java.io.File;
-import java.io.IOException;
 
 import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.locks.Lock;

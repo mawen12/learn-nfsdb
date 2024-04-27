@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.mawen.nfsdb.journal.column.FixedWidthColumn;
 import com.mawen.nfsdb.journal.column.SymbolTable;
 import com.mawen.nfsdb.journal.concurrent.PartitionCleaner;
 import com.mawen.nfsdb.journal.concurrent.TimerCache;
@@ -26,6 +27,7 @@ import com.mawen.nfsdb.journal.tx.TxLog;
 import com.mawen.nfsdb.journal.utils.Dates;
 import com.mawen.nfsdb.journal.utils.Files;
 import com.mawen.nfsdb.journal.utils.Rows;
+import org.joda.time.Interval;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
@@ -88,7 +90,72 @@ public class JournalWriter<T> extends Journal<T> {
 		return future;
 	}
 
+	public boolean commitAndAwait(long timeout, TimeUnit unit) throws JournalException {
+		boolean result = true;
+		if (txActive) {
+			commit(Tx.TX_NORMAL);
+			if (txListener != null) {
+				result = txListener.notifySync(timeout, unit);
+			}
+			txActive = false;
+		}
+		return result;
+	}
 
+	public void rollback() throws JournalException {
+		if (txActive) {
+			Tx tx = txLog.get();
+
+			// partitions need to be dealt with first to make sure new lag is assigned a correct parttitionIndex
+			rollbackPartitions(tx);
+
+			Partition<T> lag = getIrregularPartition();
+			if (tx.lagName != null && tx.lagName.length() > 0 && (lag == null || !tx.lagName.equals(lag.getName()))) {
+				TempPartition<T> newLag = createTempPartition(tx.lagName);
+				setIrregularPartition(newLag);
+				newLag.applyTx(tx.lagSize, tx.lagIndexPointers);
+			}
+			else if (lag != null && tx.lagName == null) {
+				removeIrregularPartition();
+			}
+			else if (lag != null) {
+				lag.truncate(tx.lagSize);
+			}
+
+			if (tx.symbolTableSizes.length == 0) {
+				for (int i = 0; i < getSymbolTableCount(); i++) {
+					getSymbolTable(i).truncate();
+				}
+			}
+			else {
+				for (int i = 0; i < getSymbolTableCount(); i++) {
+					getSymbolTable(i).truncate(tx.symbolTableSizes[i]);
+				}
+			}
+			hardMaxTimestamp = 0;
+			txActive = false;
+		}
+	}
+
+	public void setTxListener(TxListener txListener) {
+		this.txListener = txListener;
+	}
+
+	public Partition<T> getPartitionForTimestamp(long timestamp) {
+		for (int i = 0, partitionSize = partitions.size(); i < partitionSize; i++) {
+			Partition<T> result = partitions.get(i);
+			if (result.getInterval() == null || result.getInterval().contains(timestamp)) {
+				return result.access();
+			}
+		}
+
+		if (partitions.get(0).getInterval().isAfter(timestamp)) {
+			return partitions.get(0).access();
+		}
+		else {
+			return partitions.get(nonLagPartitionCount() - 1).access();
+		}
+	}
 
 	/**
 	 * Opens existing lag partition if it exists or creates new one if parent journal is configured to
@@ -175,7 +242,7 @@ public class JournalWriter<T> extends Journal<T> {
 			Files.deleteOrException(partition.getPartitionDir());
 		}
 
-		clearPartitions();
+		closePartitions();
 
 		for (int i = 0; i < getSymbolTableCount(); i++) {
 			getSymbolTable(i).truncate();
@@ -208,7 +275,7 @@ public class JournalWriter<T> extends Journal<T> {
 		Files.deleteOrException(getLocation());
 	}
 
-	public <T> void append(Journal<T> journal) {
+	public void append(Journal<T> journal) throws JournalException {
 		try (ParallelIterator<T> iterator = journal.parallelIterator()) {
 			for (T obj : iterator) {
 				append(obj);
@@ -460,6 +527,70 @@ public class JournalWriter<T> extends Journal<T> {
 		}
 	}
 
+	public Partition<T> getAppendPartition(long timestamp) throws JournalException {
+		int sz = nonLagPartitionCount();
+		if (sz > 0) {
+			Partition<T> result = partitions.get(sz - 1).access();
+			if (result.getInterval() == null || result.getInterval().contains(timestamp)) {
+				return result.open();
+			}
+			else if (result.getInterval().isBefore(timestamp)) {
+				return createPartition(Dates.intervalForDate(timestamp,getMetadata().getPartitionType()), sz);
+			}
+			else {
+				throw new JournalException("%s cannot be appended to %s", Dates.toString(timestamp), this);
+			}
+		}
+		else {
+			return createPartition(Dates.intervalForDate(timestamp, getMetadata().getPartitionType()), 0);
+		}
+	}
+
+	public Partition<T> createPartition(Interval interval, int partitionIndex) {
+		Partition<T> result = new Partition<>(this, interval, partitionIndex, Journal.TX_LIMIT_EVAL, null);
+		partitions.add(result);
+		return result;
+	}
+
+	public long getImmutableMaxTimestamp() throws JournalException {
+		if (hardMaxTimestamp == 0) {
+			if (nonLagPartitionCount() == 0) {
+				return 0;
+			}
+
+			FixedWidthColumn column = lastNonEmptyNonLag().getTimestampColumn();
+			if (column.size() > 0) {
+				hardMaxTimestamp = column.getLong(column.size() - 1);
+			}
+			else {
+				return 0;
+			}
+		}
+
+		return hardMaxTimestamp;
+	}
+
+	public Partition<T> lastNonEmptyNonLag() throws JournalException {
+		if (nonLagPartitionCount() > 0) {
+			Partition<T> result = getPartition(nonLagPartitionCount() - 1, true);
+
+			while (true) {
+				if (result.size() > 0) {
+					return result;
+				}
+
+				if (result.getPartitionIndex() == 0) {
+					break;
+				}
+
+				result = getPartition(result.getPartitionIndex() - 1, true);
+			}
+			return result;
+		}
+		else {
+			return null;
+		}
+	}
 
 	/////////////////////////////////////////////////////////////////
 

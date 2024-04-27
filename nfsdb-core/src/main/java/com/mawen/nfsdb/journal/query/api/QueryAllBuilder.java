@@ -1,6 +1,7 @@
 package com.mawen.nfsdb.journal.query.api;
 
 import com.mawen.nfsdb.journal.UnorderedResultSet;
+import com.mawen.nfsdb.journal.exceptions.JournalException;
 import org.joda.time.Interval;
 
 /**
@@ -15,5 +16,5 @@ public interface QueryAllBuilder<T> {
 
 	void resetFilter();
 
-	UnorderedResultSet<T> asResultSet();
+	UnorderedResultSet<T> asResultSet() throws JournalException;
 }

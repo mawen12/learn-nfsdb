@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.mawen.nfsdb.journal.concurrent.NamedDaemonThreadFactory;
 import com.mawen.nfsdb.journal.concurrent.TimerCache;
+import com.mawen.nfsdb.journal.exceptions.JournalException;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
@@ -29,7 +30,7 @@ public class JournalPool implements Closeable {
 		}
 	}
 
-	public JournalCachingFactory get() throws InterruptedException {
+	public JournalCachingFactory get() throws InterruptedException, JournalException {
 		if (running.get()) {
 			JournalCachingFactory factory = pool.take();
 			factory.refresh();

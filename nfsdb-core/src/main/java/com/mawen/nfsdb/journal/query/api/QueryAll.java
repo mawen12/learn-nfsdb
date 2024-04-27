@@ -1,5 +1,6 @@
 package com.mawen.nfsdb.journal.query.api;
 
+import com.mawen.nfsdb.journal.OrderedResultSet;
 import com.mawen.nfsdb.journal.exceptions.JournalException;
 import com.mawen.nfsdb.journal.iterators.JournalIterator;
 import com.mawen.nfsdb.journal.iterators.ParallelIterator;

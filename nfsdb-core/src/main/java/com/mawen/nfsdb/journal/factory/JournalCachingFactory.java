@@ -67,7 +67,7 @@ public class JournalCachingFactory extends AbstractJournalReaderFactory implemen
 		}
 	}
 
-	void closePool() {
+	void clearPool() {
 		this.pool = null;
 	}
 
