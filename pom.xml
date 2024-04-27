@@ -5,8 +5,10 @@
     <version>1.0</version>
     <modules>
         <module>nfsdb-core</module>
-        <module>nsfdb-guice</module>
+        <module>nfsdb-guice</module>
+        <module>nfsdb-test-model</module>
     </modules>
+
     <groupId>com.mawen</groupId>
     <artifactId>learn-nfsdb</artifactId>
     <packaging>pom</packaging>

@@ -198,7 +198,7 @@ public class MappedFileImpl implements MappedFile {
 		}
 
 		try {
-			FileChannel offsetChannel = new RandomAccessFile(file, mode).getChannel();
+			FileChannel offsetChannel = this.channel = new RandomAccessFile(file, mode).getChannel();
 			if ("r".equals(mode)) {
 				this.offsetBuffer = offsetChannel.map(FileChannel.MapMode.READ_ONLY, 0, Math.min(offsetChannel.size(), 8));
 			}
