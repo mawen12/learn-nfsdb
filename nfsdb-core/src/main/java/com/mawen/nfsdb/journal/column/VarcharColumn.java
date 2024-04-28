@@ -18,7 +18,7 @@ public class VarcharColumn extends AbstractColumn{
 
 	private final FixedWidthColumn indexColumn;
 	private final int maxLen;
-	private char buffer[] = new char[32];
+	private char[] buffer = new char[32];
 
 	public VarcharColumn(MappedFile dataFile, MappedFile indexFile, int maxLen) {
 		super(dataFile);
@@ -60,24 +60,6 @@ public class VarcharColumn extends AbstractColumn{
 		return indexColumn.getLong(localRowID);
 	}
 
-	public String getString(long localRowID) {
-		try {
-			if (maxLen < JournalMetadata.BYTE_LIMIT) {
-				return getStringB(localRowID);
-			}
-			else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
-				return getStringW(localRowID);
-			}
-			else {
-				return getStringDW(localRowID);
-			}
-		}
-		catch (RuntimeException e) {
-			LOGGER.error(this + " Could not read string [localRowID=" + localRowID + "]");
-			throw e;
-		}
-	}
-
 	public void putString(String value) {
 		if (value == null) {
 			putNull();
@@ -90,6 +72,24 @@ public class VarcharColumn extends AbstractColumn{
 		}
 		else {
 			putStringDW(value);
+		}
+	}
+
+	public String getString(long localRowID) {
+		try {
+			if (maxLen <= JournalMetadata.BYTE_LIMIT) {
+				return getStringB(localRowID);
+			}
+			else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
+				return getStringW(localRowID);
+			}
+			else {
+				return getStringDW(localRowID);
+			}
+		}
+		catch (RuntimeException e) {
+			LOGGER.error(this + " Could not read string [localRowID=" + localRowID + "]");
+			throw e;
 		}
 	}
 
