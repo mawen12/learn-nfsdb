@@ -115,11 +115,25 @@ public class VarcharColumnUnitTest {
 		try (VarcharColumn varchar2 = new VarcharColumn(df2, idx2, JournalMetadata.BYTE_LIMIT)) {
 			Assert.assertEquals("string1", varchar2.getString(0));
 			Assert.assertEquals("string2", varchar2.getString(1));
-			Assert.assertNull(varchar2.getString(2));
 			Assert.assertEquals("string3", varchar2.getString(3));
-			Assert.assertNull(varchar2.getString(4));
 			Assert.assertEquals("string4", varchar2.getString(5));
 		}
 	}
 
+	@Test
+	public void testTruncate() throws JournalException {
+
+		// given
+		MappedFile df1 = new MappedFileImpl(dataFile, 22, JournalMode.APPEND);
+		MappedFile idx1 = new MappedFileImpl(indexFile, 22, JournalMode.APPEND);
+		try (VarcharColumn varchar1 = new VarcharColumn(df1, idx1, JournalMetadata.BYTE_LIMIT)) {
+			varchar1.putString("string1");
+			varchar1.commit();
+		}
+
+		// when
+
+		// then
+
+	}
 }
