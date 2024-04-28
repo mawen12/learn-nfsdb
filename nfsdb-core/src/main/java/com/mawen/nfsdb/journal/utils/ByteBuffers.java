@@ -7,7 +7,7 @@ import java.nio.channels.WritableByteChannel;
 
 import com.mawen.nfsdb.journal.exceptions.JournalDisconnectedChannelException;
 import com.mawen.nfsdb.journal.exceptions.JournalNetworkException;
-import jdk.internal.ref.Cleaner;
+import sun.misc.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**

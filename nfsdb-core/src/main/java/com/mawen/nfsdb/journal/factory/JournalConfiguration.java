@@ -19,7 +19,7 @@ import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
 import com.mawen.nfsdb.journal.logging.Logger;
 import com.mawen.nfsdb.journal.utils.CheckSum;
 import com.mawen.nfsdb.journal.utils.Files;
-import jakarta.xml.bind.DatatypeConverter;
+import javax.xml.bind.DatatypeConverter;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>

@@ -15,7 +15,7 @@ import com.mawen.nfsdb.journal.utils.ByteBuffers;
 import com.mawen.nfsdb.journal.utils.CheckSum;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jakarta.xml.bind.DatatypeConverter;
+import javax.xml.bind.DatatypeConverter;
 import sun.misc.Unsafe;
 
 /**

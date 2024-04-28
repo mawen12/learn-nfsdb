@@ -132,7 +132,7 @@ public class SymbolTable implements Closeable {
 	}
 
 	public Iterable<String> values() {
-		return () -> new Iterator<>() {
+		return () -> new Iterator<String>() {
 
 			private long current = 0;
 			private final long size = SymbolTable.this.size();

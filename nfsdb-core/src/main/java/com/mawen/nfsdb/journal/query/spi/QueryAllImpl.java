@@ -136,7 +136,7 @@ public class QueryAllImpl<T> implements QueryAll<T> {
 	private List<JournalIteratorRange> createRanges(Interval interval) {
 		final List<JournalIteratorRange> ranges = new ArrayList<>();
 		try {
-			journal.iteratePartitions(new OrderedResultSetBuilder<>(interval) {
+			journal.iteratePartitions(new OrderedResultSetBuilder<T>(interval) {
 				@Override
 				public void read(long lo, long hi) throws JournalException {
 					ranges.add(new JournalIteratorRange(partition.getPartitionIndex(), lo, hi));

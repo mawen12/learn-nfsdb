@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<db>
+    <journal class="com.mawen.nfsdb.journal.test.model.Quote" defaultPath="quote" timestampColumn="timestamp"
+        partitionType="MONTH" recordHint="1000000" openPartitionTTL="180" lagHours="12" key="sym">
+        <sym name="sym" indexed="true" maxsize="4" hintDistinctCount="15"/>
+        <sym name="ex" indexed="true" maxsize="2" hintDistinctCount="30"/>
+        <sym name="mode" indexed="true" hintDistinctCount="30"/>
+    </journal>
+
+    <journal class="com.mawen.nfsdb.journal.test.model.Trade" defaultPath="trade" timestampColumn="timestamp"
+        partitionType="MONTH" recordHint="1000000" openPartitionTTL="180" key="sym">
+        <sym name="sym" indexed="true" maxsize="4" hintDistinctCount="15"/>
+        <sym name="ex" indexed="true" maxsize="2" hintDistinctCount="30"/>
+        <sym name="cond" hintDistinctCount="30"/>
+    </journal>
+
+    <journal class="com.mawen.nfsdb.journal.test.model.RDFData" defaultPath="rdfdata" timestampColumn="timestamp"
+        partitionType="NONE" recordHint="25000" key="subj">
+        <sym name="subj" indexed="true" hintDistinctCount="12000"/>
+        <sym name="subjType" indexed="true" hintDistinctCount="5"/>
+        <sym name="predicate" indexed="true" hintDistinctCount="5"/>
+        <sym name="obj" sameAs="subj" indexed="true"/>
+        <sym name="objType" sameAs="subjType" indexed="true"/>
+    </journal>
+
+    <journal class="com.mawen.nfsdb.journal.test.model.TestEntity" defaultPath="quote" timestampColumn="timestamp"
+        partitionType="MONTH" recordHint="18000000" openPartitionTTL="180" lagHours="48" key="sym">
+        <sym name="sym" maxsize="255" indexed="true" hintDistinctCount="15"/>
+        <sym name="bStr" maxsize="255" avgSize="32"/>
+        <sym name="dStr" maxsize="64000" avgSize="32"/>
+        <sym name="dStr" maxsize="100000" avgSize="32"/>
+    </journal>
+</db>

@@ -43,7 +43,7 @@ public class JournalPool implements Closeable {
 
 	@Override
 	public void close() throws IOException {
-		if (running.compareAndExchange(true, false)) {
+		if (running.compareAndSet(true, false)) {
 			for (JournalCachingFactory factory : pool) {
 				factory.clearPool();
 				factory.close();

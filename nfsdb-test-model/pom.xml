@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>nfsdb-test-model</artifactId>
+    <packaging>jar</packaging>
 
     <build>
         <plugins>
@@ -18,7 +19,9 @@
                 <artifactId>maven-thrift-plugin</artifactId>
                 <version>0.1.11</version>
                 <configuration>
-                    <thriftExecutable>thrift-0.9.1.exe</thriftExecutable>
+                    <thriftExecutable>/usr/local/bin/thrift</thriftExecutable>
+                    <generator>java:private-members</generator>
+                    <thriftSourceRoot>${project.basedir}/src/main/thrift/</thriftSourceRoot>
                 </configuration>
                 <executions>
                     <execution>
@@ -33,6 +36,26 @@
                     </execution>
                 </executions>
             </plugin>
+<!--            <plugin>-->
+<!--                <groupId>io.potter.thrift</groupId>-->
+<!--                <artifactId>thrift-maven-plugin</artifactId>-->
+<!--                <version>1.0</version>-->
+<!--                <configuration>-->
+<!--                    <thriftExecutable>/usr/local/bin/thrift</thriftExecutable>-->
+<!--                    <generator>java:private-members</generator>-->
+<!--                    <thriftSourceRoot>${project.basedir}/src/main/thrift/</thriftSourceRoot>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>thrift-sources</id>-->
+<!--                        <phase>generate-sources</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>compile</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
                 <artifactId>replacer</artifactId>
@@ -61,7 +84,7 @@
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
-            <version>0.9.1</version>
+            <version>0.20.0</version>
         </dependency>
     </dependencies>
 </project>

@@ -55,7 +55,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	private final Query<T> query = new QueryImpl<>(this);
 	private final TimerCache timerCache;
 	private final long timestampOffset;
-	private final Comparator<T> timestampComparator = new Comparator<>() {
+	private final Comparator<T> timestampComparator = new Comparator<T>() {
 		@Override
 		public int compare(T o1, T o2) {
 			long x = Unsafe.getUnsafe().getLong(o1, timestampOffset);
