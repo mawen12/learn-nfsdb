@@ -138,7 +138,7 @@ public class SymbolIndex implements Closeable {
 	}
 
 	public long getTxAddress() {
-		return keyBlockAddressOffset;
+		return keyBlockSizeOffset;
 	}
 
 	public void setTxAddress(long txAddress) {

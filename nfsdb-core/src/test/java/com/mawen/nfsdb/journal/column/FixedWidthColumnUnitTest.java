@@ -65,4 +65,34 @@ public class FixedWidthColumnUnitTest {
 		}
 	}
 
+	@Test
+	public void testFixedWithFloat() throws JournalException {
+		MappedFile data = new MappedFileImpl(dataFile, 22, JournalMode.APPEND);
+		try (FixedWidthColumn col = new FixedWidthColumn(data, 4)) {
+			int max = 150;
+			for (int i = 0; i < max; i++) {
+				col.putFloat(max - i + 0.33f);
+				col.commit();
+			}
+
+			for (int i = 0; i < col.size(); i++) {
+				Assert.assertEquals(max - i + 0.33f, col.getFloat(i), 0);
+			}
+		}
+	}
+
+	@Test
+	public void testFixedWithNull() throws JournalException {
+		MappedFile data = new MappedFileImpl(dataFile, 22, JournalMode.APPEND);
+		try (FixedWidthColumn col = new FixedWidthColumn(data, 4)) {
+			int max = 150;
+			for (int i = 0; i < max; i++) {
+				col.putNull();
+				col.commit();
+			}
+
+			Assert.assertEquals(max, col.size());
+		}
+	}
+
 }

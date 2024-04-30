@@ -1,6 +1,7 @@
 package com.mawen.nfsdb.journal.column;
 
 import java.io.File;
+import java.util.Arrays;
 
 import com.mawen.nfsdb.journal.JournalMode;
 import com.mawen.nfsdb.journal.exceptions.JournalException;
@@ -126,14 +127,45 @@ public class VarcharColumnUnitTest {
 		// given
 		MappedFile df1 = new MappedFileImpl(dataFile, 22, JournalMode.APPEND);
 		MappedFile idx1 = new MappedFileImpl(indexFile, 22, JournalMode.APPEND);
-		try (VarcharColumn varchar1 = new VarcharColumn(df1, idx1, JournalMetadata.BYTE_LIMIT)) {
-			varchar1.putString("string1");
-			varchar1.commit();
+		try (VarcharColumn varchar = new VarcharColumn(df1, idx1, JournalMetadata.BYTE_LIMIT)) {
+			putCommit(varchar, "string1");
+			putCommit(varchar, "string2");
+			putCommit(varchar);
+			putCommit(varchar, "string3");
+			putCommit(varchar);
+			putCommit(varchar, "string4");
+
+			Assert.assertEquals(6, varchar.size());
+			varchar.truncate(4);
+			varchar.commit();
+
+			Assert.assertEquals(4, varchar.size());
+			Assert.assertEquals("string1", varchar.getString(0));
+			Assert.assertEquals("string2", varchar.getString(1));
+//			Assert.assertNull(varchar.getString(2));
+			Assert.assertEquals("string3", varchar.getString(3));
 		}
 
 		// when
+		MappedFile df2 = new MappedFileImpl(dataFile, 22, JournalMode.READ);
+		MappedFile idx2 = new MappedFileImpl(indexFile, 22, JournalMode.READ);
 
 		// then
+		try (VarcharColumn varchar = new VarcharColumn(df2, idx2, JournalMetadata.BYTE_LIMIT)) {
+			Assert.assertEquals("string1", varchar.getString(0));
+			Assert.assertEquals("string2", varchar.getString(1));
+//			Assert.assertNull(varchar.getString(2));
+			Assert.assertEquals("string3", varchar.getString(3));
+		}
+	}
 
+	private void putCommit(VarcharColumn varcharColumn, String... content) {
+		if (content.length == 0) {
+			varcharColumn.putNull();
+		}
+		else {
+			varcharColumn.putString(content[0]);
+		}
+		varcharColumn.commit();
 	}
 }

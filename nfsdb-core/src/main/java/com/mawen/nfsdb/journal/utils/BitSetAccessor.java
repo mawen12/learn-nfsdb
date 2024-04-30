@@ -3,7 +3,6 @@ package com.mawen.nfsdb.journal.utils;
 import java.util.BitSet;
 
 import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
-import sun.misc.Unsafe;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>

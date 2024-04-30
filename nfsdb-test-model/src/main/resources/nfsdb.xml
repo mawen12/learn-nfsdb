@@ -27,8 +27,8 @@
     <journal class="com.mawen.nfsdb.journal.test.model.TestEntity" defaultPath="quote" timestampColumn="timestamp"
         partitionType="MONTH" recordHint="18000000" openPartitionTTL="180" lagHours="48" key="sym">
         <sym name="sym" maxsize="255" indexed="true" hintDistinctCount="15"/>
-        <sym name="bStr" maxsize="255" avgSize="32"/>
-        <sym name="dStr" maxsize="64000" avgSize="32"/>
-        <sym name="dStr" maxsize="100000" avgSize="32"/>
+        <string name="bStr" maxsize="255" avgSize="32"/>
+        <string name="dStr" maxsize="64000" avgSize="32"/>
+        <string name="dStr" maxsize="100000" avgSize="32"/>
     </journal>
 </db>

@@ -8,7 +8,7 @@ import com.mawen.nfsdb.journal.collections.IntArrayList;
 import com.mawen.nfsdb.journal.column.ColumnType;
 import com.mawen.nfsdb.journal.exceptions.JournalConfigurationException;
 import com.mawen.nfsdb.journal.exceptions.JournalUnSupportedTypeException;
-import sun.misc.Unsafe;
+import com.mawen.nfsdb.journal.utils.Unsafe;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>

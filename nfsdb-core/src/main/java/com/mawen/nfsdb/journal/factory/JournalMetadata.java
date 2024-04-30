@@ -13,10 +13,10 @@ import com.mawen.nfsdb.journal.exceptions.JournalConfigurationException;
 import com.mawen.nfsdb.journal.exceptions.JournalRuntimeException;
 import com.mawen.nfsdb.journal.utils.ByteBuffers;
 import com.mawen.nfsdb.journal.utils.CheckSum;
+import com.mawen.nfsdb.journal.utils.Unsafe;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import javax.xml.bind.DatatypeConverter;
-import sun.misc.Unsafe;
 
 /**
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
