@@ -576,7 +576,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	private void configureSymbolTableSynonyms() {
 		for (int i = 0, columnCount = getMetadata().getColumnCount(); i < columnCount; i++) {
 			JournalMetadata.ColumnMetadata meta = metadata.getColumnMetadata(i);
-			if (meta.type == ColumnType.SYMBOL && meta.sameAs == null) {
+			if (meta.type == ColumnType.SYMBOL && meta.sameAs != null) {
 				SymbolTable tab = getSymbolTable(meta.sameAs);
 				symbolTableMap.put(meta.name, tab);
 				columnMetadata[i].symbolTable = tab;

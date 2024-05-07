@@ -16,6 +16,9 @@ import com.mawen.nfsdb.journal.utils.Unsafe;
  */
 public class ThriftNullsAdaptor<T> implements NullsAdaptor<T> {
 
+	/**
+	 * cache primitive field type
+	 */
 	private final IntArrayList fieldMapping = new IntArrayList();
 	private BitFieldType bitFieldType;
 	private long bitFieldOffset;
@@ -154,10 +157,10 @@ public class ThriftNullsAdaptor<T> implements NullsAdaptor<T> {
 				Unsafe.getUnsafe().putShort(obj, bitFieldOffset, (short) bitField);
 				break;
 			case INT:
-				Unsafe.getUnsafe().putInt(obj, bitFieldOffset, 0);
+				Unsafe.getUnsafe().putInt(obj, bitFieldOffset, (int) bitField);
 				break;
 			case LONG:
-				Unsafe.getUnsafe().putLong(obj, bitFieldOffset, 0L);
+				Unsafe.getUnsafe().putLong(obj, bitFieldOffset, bitField);
 				break;
 			default:
 				throw new JournalUnSupportedTypeException(bitFieldType);
@@ -195,6 +198,7 @@ public class ThriftNullsAdaptor<T> implements NullsAdaptor<T> {
 				throw new JournalUnSupportedTypeException(bitFieldType);
 		}
 
+		// check if set value, then set bitset or clear bitset
 		for (int i = 0, sz = fieldMapping.size(); i < sz; i++) {
 			if ((bitField & (1 << i)) == 0) {
 				dst.set(fieldMapping.getQuick(i));

@@ -151,7 +151,7 @@ public class JournalConfiguration {
 			if (lo == -1) {
 				throw new JournalException("Cannot find journal metadata checksum. Corrupt journal?");
 			}
-			int hi = metaStr.indexOf("", lo + pattern.length());
+			int hi = metaStr.indexOf("'", lo + pattern.length());
 			if (hi == -1) {
 				throw new JournalException("Cannot find journal metadata checksum. Corrupt journal?");
 			}

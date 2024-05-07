@@ -266,7 +266,7 @@ public class JournalMetadata<T> {
 	@Override
 	public String toString() {
 		return "JournalMetadata{" +
-				"SHA'" + DatatypeConverter.printBase64Binary(CheckSum.getCheckSum(this)) + '\'' +
+				"SHA='" + DatatypeConverter.printBase64Binary(CheckSum.getCheckSum(this)) + '\'' +
 				", columnMetadataList*=" + columnMetadataList +
 				", modelClass*=" + modelClass +
 				", timestampColumn='" + timestampColumn + '\'' +

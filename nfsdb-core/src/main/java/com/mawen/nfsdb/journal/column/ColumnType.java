@@ -7,19 +7,19 @@ package com.mawen.nfsdb.journal.column;
 public enum ColumnType {
 	BOOLEAN(boolean.class, 1, true),
 	BYTE(byte.class, 1, true),
-	DOUBLE(double.class, 8, true),
+	SHORT(short.class, 2, true),
 	INT(int.class, 4, true),
 	LONG(long.class, 8, true),
-	SHORT(short.class, 2, true),
+	DOUBLE(double.class, 8, true),
 	STRING(String.class, 0, false),
 	SYMBOL(null, 4, false),
 	;
 
-	private final Class type;
+	private final Class<?> type;
 	private final boolean primitive;
 	private final int size;
 
-	public boolean matches(Class type) {
+	public boolean matches(Class<?> type) {
 		return this.type == type;
 	}
 
@@ -31,7 +31,7 @@ public enum ColumnType {
 		return size;
 	}
 
-	ColumnType(Class type, int size, boolean primitive) {
+	ColumnType(Class<?> type, int size, boolean primitive) {
 		this.type = type;
 		this.primitive = primitive;
 		this.size = size;

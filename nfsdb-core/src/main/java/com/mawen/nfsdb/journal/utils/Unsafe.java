@@ -3,6 +3,8 @@ package com.mawen.nfsdb.journal.utils;
 import java.lang.reflect.Field;
 
 /**
+ * Hold {@link sun.misc.Unsafe} Object Instance.
+ *
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
  * @since 2024/4/24
  */

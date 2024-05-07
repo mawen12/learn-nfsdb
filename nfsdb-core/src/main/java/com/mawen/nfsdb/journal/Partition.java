@@ -170,6 +170,18 @@ public class Partition<T> implements Iterable<T>, Closeable {
 					columns.length
 			);
 
+			String[] readColumns = journal.getMode() == JournalMode.APPEND ? null : journal.getReadColumns();
+			if (readColumns == null || readColumns.length == 0) {
+				for (int i = 0; i < columns.length; i++) {
+					open(i);
+				}
+			}
+			else {
+				for (String name : readColumns) {
+					open(journal.getMetadata().getColumnIndex(name));
+				}
+			}
+
 		}
 		return this;
 	}
