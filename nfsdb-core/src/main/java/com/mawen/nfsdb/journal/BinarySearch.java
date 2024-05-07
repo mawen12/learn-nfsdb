@@ -80,7 +80,7 @@ public class BinarySearch {
 			long medianTime = data.readLong(median);
 
 			if (timestamp <= medianTime) {
-				return indexOf(data, startIndex, medianTime, timestamp, type);
+				return indexOf(data, startIndex, median, timestamp, type);
 			}
 			else {
 				return indexOf(data, median, endIndex, timestamp, type);

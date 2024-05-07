@@ -39,7 +39,7 @@ public class QueryAllImpl<T> implements QueryAll<T> {
 			@Override
 			public void read(long lo, long hi) throws JournalException {
 				result.ensureCapacity((int) (hi - lo + 1));
-				for (long i = lo; i < hi; i++) {
+				for (long i = lo; i < hi + 1; i++) {
 					result.add(Rows.toRowID(partition.getPartitionIndex(), i));
 				}
 			}

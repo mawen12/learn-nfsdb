@@ -546,8 +546,8 @@ public class JournalWriter<T> extends Journal<T> {
 		}
 	}
 
-	public Partition<T> createPartition(Interval interval, int partitionIndex) {
-		Partition<T> result = new Partition<>(this, interval, partitionIndex, Journal.TX_LIMIT_EVAL, null);
+	public Partition<T> createPartition(Interval interval, int partitionIndex) throws JournalException {
+		Partition<T> result = new Partition<>(this, interval, partitionIndex, Journal.TX_LIMIT_EVAL, null).open();
 		partitions.add(result);
 		return result;
 	}
