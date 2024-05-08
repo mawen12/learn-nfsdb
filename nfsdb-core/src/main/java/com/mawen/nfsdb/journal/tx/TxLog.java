@@ -35,8 +35,10 @@ public class TxLog {
 	public Tx get() {
 		long offset = getTxAddress();
 		assert offset > 0 : "zero offset";
+
 		Tx tx = new Tx();
 		ByteBuffer buffer = mf.getBuffer(offset, 4).getByteBuffer();
+
 		int txSize = buffer.getInt();
 		buffer = mf.getBuffer(offset + 4, txSize).getByteBuffer();
 

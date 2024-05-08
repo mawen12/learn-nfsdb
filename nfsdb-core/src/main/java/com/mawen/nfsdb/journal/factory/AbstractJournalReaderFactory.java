@@ -16,13 +16,9 @@ public abstract class AbstractJournalReaderFactory implements JournalReaderFacto
 	private final TimerCache timerCache;
 	private final JournalConfiguration configuration;
 
-	@Override
-	public void close() {
-	}
 
 	@Override
-	public <T> Journal<T> reader(JournalKey<T> key) throws JournalException {
-		return new Journal<>(key, configuration.getMetadata(key), timerCache);
+	public void close() {
 	}
 
 	@Override
@@ -36,9 +32,15 @@ public abstract class AbstractJournalReaderFactory implements JournalReaderFacto
 	}
 
 	@Override
+	public <T> Journal<T> reader(JournalKey<T> key) throws JournalException {
+		return new Journal<>(key, configuration.getMetadata(key), timerCache);
+	}
+
+	@Override
 	public JournalConfiguration getConfiguration() {
 		return configuration;
 	}
+
 
 	protected AbstractJournalReaderFactory(JournalConfiguration configuration) {
 		this(configuration, new TimerCache().start());

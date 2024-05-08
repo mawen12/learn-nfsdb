@@ -19,6 +19,7 @@ public class JournalKey<T> {
 	private int recordHint = JournalConfiguration.NULL_RECORD_HINT;
 	private boolean ordered = true;
 
+
 	public JournalKey(Class<T> clazz) {
 		this.clazz = clazz.getName();
 	}
@@ -65,6 +66,7 @@ public class JournalKey<T> {
 		this.partitionType = partitionType;
 		this.ordered = ordered;
 	}
+
 
 	public static JournalKey<Object> fromBuffer(ByteBuffer buffer) {
 		// clazz

@@ -110,7 +110,7 @@ public class TestUtils {
 		Random r = new Random(System.currentTimeMillis());
 		for (int i = 0; i < count; i++) {
 			w.clearObject(q);
-			q.setSym(symbols[Math.abs(r.nextInt() % symbols.length)]);
+			q.setSym(symbols[Math.abs(r.nextInt() % (symbols.length - 1))]);
 			q.setAsk(Math.abs(r.nextDouble()));
 			q.setBid(Math.abs(r.nextDouble()));
 			q.setAskSize(Math.abs(r.nextInt()));

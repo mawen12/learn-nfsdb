@@ -19,6 +19,7 @@ public enum ColumnType {
 	private final boolean primitive;
 	private final int size;
 
+
 	public boolean matches(Class<?> type) {
 		return this.type == type;
 	}
@@ -30,6 +31,7 @@ public enum ColumnType {
 	public int size() {
 		return size;
 	}
+
 
 	ColumnType(Class<?> type, int size, boolean primitive) {
 		this.type = type;

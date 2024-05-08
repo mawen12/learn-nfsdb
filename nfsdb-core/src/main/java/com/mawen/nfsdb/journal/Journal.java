@@ -44,30 +44,42 @@ import org.joda.time.Interval;
 public class Journal<T> implements Iterable<T>, Closeable {
 
 	private static final Logger LOGGER = Logger.getLogger(Journal.class);
+
 	public static final long TX_LIMIT_EVAL = -1L;
-	protected final List<Partition<T>> partitions = new ArrayList<>();
-	protected TxLog txLog;
+	/**
+	 * journal metadata
+	 */
 	private final JournalMetadata<T> metadata;
+	private final JournalKey<T> key;
+	/**
+	 * journal store path
+	 */
 	private final File location;
+	/**
+	 *
+	 */
+	private final TimerCache timerCache;
+	protected TxLog txLog;
+	private boolean open;
+	private final long timestampOffset;
+	private String[] readColumns;
+	private ColumnMetadata[] columnMetadata;
+	private Partition<T> irregularPartition;
+	private JournalClosingListener closeListener;
+
+	private final Query<T> query = new QueryImpl<>(this);
 	private final Map<String, SymbolTable> symbolTableMap = new HashMap<>();
 	private final ArrayList<SymbolTable> symbolTables = new ArrayList<>();
-	private final JournalKey<T> key;
-	private final Query<T> query = new QueryImpl<>(this);
-	private final TimerCache timerCache;
-	private final long timestampOffset;
+	protected final List<Partition<T>> partitions = new ArrayList<>();
 	private final Comparator<T> timestampComparator = new Comparator<T>() {
 		@Override
 		public int compare(T o1, T o2) {
 			long x = Unsafe.getUnsafe().getLong(o1, timestampOffset);
 			long y = Unsafe.getUnsafe().getLong(o2, timestampOffset);
-			return (x < y) ? -1 : (x == y) ? 0 : 1;
+			return Long.compare(x, y);
 		}
 	};
-	private boolean open;
-	private String[] readColumns;
-	private ColumnMetadata[] columnMetadata;
-	private Partition<T> irregularPartition;
-	private JournalClosingListener closeListener;
+
 
 	public Journal(JournalKey<T> key, JournalMetadata<T> metadata, TimerCache timerCache) throws JournalException {
 		this.metadata = metadata;
@@ -91,7 +103,6 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	@Override
 	public void close() {
 		if (open) {
-
 			if (closeListener != null) {
 				if (!closeListener.closing(this)) {
 					return;

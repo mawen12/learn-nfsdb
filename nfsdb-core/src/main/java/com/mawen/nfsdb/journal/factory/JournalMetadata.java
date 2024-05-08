@@ -28,21 +28,57 @@ public class JournalMetadata<T> {
 	public static final int TWO_BYTE_LIMIT = 0xffff;
 	public static final int INVALID_INDEX = -1;
 
-	private int timestampColumnIndex = INVALID_INDEX;
-	private final TObjectIntMap<String> columnMetadataMap;
-	private final List<ColumnMetadata> columnMetadataList;
+	/**
+	 * Model class
+	 */
 	private final Class modelClass;
-	private final String timestampColumn;
-	private final String key;
-	private final int openPartitionTTL;
-	private final NullsAdaptor<T> nullsAdaptor;
+	/**
+	 * store path
+	 */
 	private String location;
+	/**
+	 * timestamp column name
+	 */
+	private final String timestampColumn;
+	/**
+	 * partition type
+	 */
 	private PartitionType partitionType;
+	/**
+	 * query record hint
+	 */
 	private int recordHint;
-	private Constructor constructor;
+	/**
+	 * partition open ttl
+	 */
+	private final int openPartitionTTL;
+	private int lagHours;
+	private final String key;
+	private final NullsAdaptor<T> nullsAdaptor;
+	/**
+	 * String(column name) -> Int(index in columnMetadataList) Map
+	 */
+	private final TObjectIntMap<String> columnMetadataMap;
+	/**
+	 * column metadata list
+	 */
+	private final List<ColumnMetadata> columnMetadataList;
+	/**
+	 * timestamp column metadata
+	 */
 	private ColumnMetadata timestampColumnMetadata;
-	private int lagHours = 0;
-	private int columnCount = -1;
+	/**
+	 * model class constructor, this is non-args constructor
+	 */
+	private Constructor constructor;
+	/**
+	 * column count
+	 */
+	private int columnCount = INVALID_INDEX;
+	/**
+	 * timestamp column index in column metadata list
+	 */
+	private int timestampColumnIndex = INVALID_INDEX;
 
 	public JournalMetadata(Class<T> modelClass,
 			String location,
@@ -225,6 +261,7 @@ public class JournalMetadata<T> {
 		Field[] classFields = modelClass.getDeclaredFields();
 		for (Field f : classFields) {
 
+			// ignore static and __isset_bitfield
 			if (Modifier.isStatic(f.getModifiers()) || "__isset_bitfield".equals(f.getName())) {
 				continue;
 			}
@@ -239,6 +276,7 @@ public class JournalMetadata<T> {
 				}
 			}
 
+			// ignore non-exists type
 			if (meta.type == null) {
 				continue;
 			}
@@ -254,10 +292,12 @@ public class JournalMetadata<T> {
 			columnMetadataList.add(meta);
 		}
 
+		// timestamp column should in model class
 		if (timestampColumn != null && !columnMetadataMap.containsKey(timestampColumn)) {
 			throw new JournalConfigurationException("Invalid timestampColumn value on journal: %s", this);
 		}
 
+		// when partition by time but not set timestamp column, throw exception
 		if (partitionType != PartitionType.NONE && timestampColumn == null) {
 			throw new JournalConfigurationException("Either use partitionType=NONE or specify 'timestampColumn' on journal: %s", this);
 		}
@@ -298,16 +338,42 @@ public class JournalMetadata<T> {
 
 	public static class ColumnMetadata {
 		public static final int AUTO_AVG_SIZE = -1;
+		/**
+		 * column name
+		 */
 		public String name;
+		/**
+		 * column type
+		 */
 		public ColumnType type;
+		/**
+		 * field offset
+		 */
 		public long offset;
+		/**
+		 *  column size
+		 */
 		public int size;
-		public int avgSize = AUTO_AVG_SIZE;
+		/**
+		 * is indexed
+		 */
 		public boolean indexed;
 		public int bitHint;
 		public int indexBitHint;
+		/**
+		 * hint distinct count
+		 */
 		public int distinctCountHint;
 		public String sameAs;
+		/**
+		 * column avg size
+		 */
+		public int avgSize = AUTO_AVG_SIZE;
+		/**
+		 * column max size
+		 */
+		public int maxSize = JournalMetadata.BYTE_LIMIT;
+
 
 		@Override
 		public String toString() {
@@ -325,7 +391,5 @@ public class JournalMetadata<T> {
 					", maxSize=" + maxSize +
 					'}';
 		}
-
-		public int maxSize = JournalMetadata.BYTE_LIMIT;
 	}
 }

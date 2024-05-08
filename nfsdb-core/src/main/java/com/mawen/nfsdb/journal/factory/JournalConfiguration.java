@@ -143,7 +143,9 @@ public class JournalConfiguration {
 
 		metadata.setLocation(journalLocation.getAbsolutePath());
 
+		// create _meta file
 		File meta = new File(journalLocation, JOURNAL_META_FILE);
+		// check sum
 		if (meta.exists()) {
 			String metaStr = Files.readStringFromFile(meta);
 			String pattern = "SHA='";
@@ -265,9 +267,13 @@ public class JournalConfiguration {
 	private void parseSymbol(XMLStreamReader xmlr, JournalMetadata metadata) throws JournalConfigurationException {
 		String columnName = getStringAttr(xmlr, "name");
 		JournalMetadata.ColumnMetadata ccm = metadata.getColumnMetadata(columnName);
+
+		// symbol column name in Model Class should be String type
 		if (ccm.type != ColumnType.STRING) {
 			throw new JournalConfigurationException("Column %s is of type %s and cannot be a symbol in class %s", columnName, ccm.type, metadata.getModelClass().getName());
 		}
+
+		// fix type from STRING to SYMBOL
 		ccm.type = ColumnType.SYMBOL;
 		ccm.indexed = "true".equals(xmlr.getAttributeValue("", "indexed"));
 		ccm.maxSize = getIntAttr(xmlr, "maxSize", DEFAULT_SYMBOL_MAX_SIZE);
