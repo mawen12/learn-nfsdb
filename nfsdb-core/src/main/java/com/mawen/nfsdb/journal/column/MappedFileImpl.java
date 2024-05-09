@@ -26,9 +26,10 @@ import com.mawen.nfsdb.journal.utils.Lists;
 public class MappedFileImpl implements MappedFile {
 
 	private static final Logger LOGGER = Logger.getLogger(MappedFileImpl.class);
+
 	private final File file;
-	private final JournalMode mode;
 	private final int bitHint;
+	private final JournalMode mode;
 	// reserve first 8 bytes in the file for storing pointer to logical end of file
 	// so the actual data begins from "dataOffset"
 	private final int dataOffset = 8;
@@ -36,6 +37,7 @@ public class MappedFileImpl implements MappedFile {
 	private ByteBuffer offsetBuffer;
 	private List<ByteBufferWrapper> buffers;
 	private List<ByteBufferWrapper> stitches;
+
 
 	public MappedFileImpl(File file, int bitHint, JournalMode mode) throws JournalException {
 		this.file = file;
@@ -46,7 +48,6 @@ public class MappedFileImpl implements MappedFile {
 		this.stitches = new ArrayList<>(buffers.size());
 	}
 
-	/////////////////////////////////////////////////////////////////
 
 	@Override
 	public ByteBufferWrapper getBuffer(long offset, int size) {
@@ -102,26 +103,10 @@ public class MappedFileImpl implements MappedFile {
 		return buffer;
 	}
 
-	public void delete() {
-		close();
-		Files.delete(file);
-	}
-
 	@Override
-	public void close() {
-		try {
-			releaseBuffers();
-			channel.close();
-		}
-		catch (IOException e) {
-			throw new JournalRuntimeException("Cannot close file", e);
-		}
-		offsetBuffer = ByteBuffers.release(offsetBuffer);
-	}
-
-	@Override
-	public String toString() {
-		return this.getClass().getName() + "[file=" + file + ", appendOffset=" + getAppendOffset() + "]";
+	public void setAppendOffset(long offset) {
+		offsetBuffer.position(0);
+		offsetBuffer.putLong(offset);
 	}
 
 	@Override
@@ -131,12 +116,6 @@ public class MappedFileImpl implements MappedFile {
 			return offsetBuffer.getLong();
 		}
 		return -1L;
-	}
-
-	@Override
-	public void setAppendOffset(long offset) {
-		offsetBuffer.position(0);
-		offsetBuffer.putLong(offset);
 	}
 
 	@Override
@@ -160,6 +139,28 @@ public class MappedFileImpl implements MappedFile {
 		finally {
 			open();
 		}
+	}
+
+	@Override
+	public void close() {
+		try {
+			releaseBuffers();
+			channel.close();
+		}
+		catch (IOException e) {
+			throw new JournalRuntimeException("Cannot close file", e);
+		}
+		offsetBuffer = ByteBuffers.release(offsetBuffer);
+	}
+
+	@Override
+	public String toString() {
+		return this.getClass().getName() + "[file=" + file + ", appendOffset=" + getAppendOffset() + "]";
+	}
+
+	public void delete() {
+		close();
+		Files.delete(file);
 	}
 
 	public String getFullFileName() {

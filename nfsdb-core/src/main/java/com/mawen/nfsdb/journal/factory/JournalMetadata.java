@@ -24,7 +24,13 @@ import javax.xml.bind.DatatypeConverter;
  */
 public class JournalMetadata<T> {
 
+	/**
+	 * one byte (2^8 - 1) = 255
+	 */
 	public static final int BYTE_LIMIT = 0xff;
+	/**
+	 * two bytes (2^16 - 1) = 65535
+	 */
 	public static final int TWO_BYTE_LIMIT = 0xffff;
 	public static final int INVALID_INDEX = -1;
 

@@ -41,6 +41,7 @@ public class SymbolTable implements Closeable {
 	private SymbolIndex index;
 	private int size;
 
+
 	public SymbolTable(int capacity, int maxLen, File directory, String column, JournalMode mode, int size, long indexTxAddress) throws JournalException {
 		this.capacity = capacity;
 		this.column = column;
@@ -55,14 +56,6 @@ public class SymbolTable implements Closeable {
 		this.keyCache = new ArrayList<>(capacity);
 	}
 
-	public void applyTx(int size, long indexTxAddress) {
-		this.size = size;
-		this.index.setTxAddress(indexTxAddress);
-	}
-
-	public void alignSize() {
-		this.size = (int) data.size();
-	}
 
 	public int put(String value) throws JournalException {
 
@@ -77,6 +70,16 @@ public class SymbolTable implements Closeable {
 		}
 
 		return key;
+	}
+
+	public int get(String value) {
+		int result = getQuick(value);
+		if (result == VALUE_NOT_FOUND) {
+			throw new JournalInvalidSymbolValueException("Invalid value %s for symbol %s", value, column);
+		}
+		else {
+			return result;
+		}
 	}
 
 	public int getQuick(String value) {
@@ -105,14 +108,13 @@ public class SymbolTable implements Closeable {
 		return VALUE_NOT_FOUND;
 	}
 
-	public int get(String value) {
-		int result = getQuick(value);
-		if (result == VALUE_NOT_FOUND) {
-			throw new JournalInvalidSymbolValueException("Invalid value %s for symbol %s", value, column);
-		}
-		else {
-			return result;
-		}
+	public void applyTx(int size, long indexTxAddress) {
+		this.size = size;
+		this.index.setTxAddress(indexTxAddress);
+	}
+
+	public void alignSize() {
+		this.size = (int) data.size();
 	}
 
 	public boolean valueExists(String value) {

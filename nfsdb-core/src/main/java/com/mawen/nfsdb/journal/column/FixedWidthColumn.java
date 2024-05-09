@@ -9,41 +9,15 @@ import java.nio.ByteBuffer;
 public class FixedWidthColumn extends AbstractColumn {
 	private final int width;
 
+
 	public FixedWidthColumn(MappedFile mappedFile, int width) {
 		super(mappedFile);
 		this.width = width;
 	}
 
+
 	public ByteBuffer getBuffer(long localRowID) {
 		return getBuffer(getOffset(localRowID), width).getByteBuffer();
-	}
-
-	public boolean getBool(long localRowID) {
-		return getBuffer(localRowID).get() == 1;
-	}
-
-	public byte getByte(long localRowID) {
-		return getBuffer(localRowID).get();
-	}
-
-	public double getDouble(long localRowID) {
-		return getBuffer(localRowID).getDouble();
-	}
-
-	public float getFloat(long localRowID) {
-		return getBuffer(localRowID).getFloat();
-	}
-
-	public int getInt(long localRowID) {
-		return getBuffer(localRowID).getInt();
-	}
-
-	public long getLong(long localRowID) {
-		return getBuffer(localRowID).getLong();
-	}
-
-	public short getShort(long localRowID) {
-		return getBuffer(localRowID).getShort();
 	}
 
 	public void putBool(boolean value) {
@@ -54,12 +28,8 @@ public class FixedWidthColumn extends AbstractColumn {
 		getBuffer().put(value);
 	}
 
-	public void putDouble(double value) {
-		getBuffer().putDouble(value);
-	}
-
-	public void putFloat(float value) {
-		getBuffer().putFloat(value);
+	public void putShort(short value) {
+		getBuffer().putShort(value);
 	}
 
 	public void putInt(int value) {
@@ -70,13 +40,45 @@ public class FixedWidthColumn extends AbstractColumn {
 		getBuffer().putLong(value);
 	}
 
-	public void putShort(short value) {
-		getBuffer().putShort(value);
+	public void putFloat(float value) {
+		getBuffer().putFloat(value);
+	}
+
+	public void putDouble(double value) {
+		getBuffer().putDouble(value);
 	}
 
 	public void putNull() {
 		getBuffer();
 		preCommit(getOffset() + width);
+	}
+
+	public boolean getBool(long localRowID) {
+		return getBuffer(localRowID).get() == 1;
+	}
+
+	public byte getByte(long localRowID) {
+		return getBuffer(localRowID).get();
+	}
+
+	public short getShort(long localRowID) {
+		return getBuffer(localRowID).getShort();
+	}
+
+	public int getInt(long localRowID) {
+		return getBuffer(localRowID).getInt();
+	}
+
+	public long getLong(long localRowID) {
+		return getBuffer(localRowID).getLong();
+	}
+
+	public float getFloat(long localRowID) {
+		return getBuffer(localRowID).getFloat();
+	}
+
+	public double getDouble(long localRowID) {
+		return getBuffer(localRowID).getDouble();
 	}
 
 	@Override

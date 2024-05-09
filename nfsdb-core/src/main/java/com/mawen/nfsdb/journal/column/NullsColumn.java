@@ -14,6 +14,7 @@ public class NullsColumn extends FixedWidthColumn {
 	private final int wordCount;
 	private long cachedRowID;
 
+
 	public NullsColumn(MappedFile mappedFile, int size, int nullCount) {
 		super(mappedFile, size);
 		this.bitSet = new BitSet(nullCount);
@@ -21,12 +22,6 @@ public class NullsColumn extends FixedWidthColumn {
 		this.cachedRowID = -1;
 	}
 
-	public BitSet getBitSet(long localRowID) {
-		if (localRowID != cachedRowID) {
-			getBitSet(localRowID, bitSet);
-		}
-		return bitSet;
-	}
 
 	public void putBitSet(BitSet bitSet) {
 		ByteBuffer bb = getBuffer();
@@ -35,6 +30,13 @@ public class NullsColumn extends FixedWidthColumn {
 			bb.putLong(words[i]);
 		}
 		cachedRowID = -1;
+	}
+
+	public BitSet getBitSet(long localRowID) {
+		if (localRowID != cachedRowID) {
+			getBitSet(localRowID, bitSet);
+		}
+		return bitSet;
 	}
 
 	private void getBitSet(long localRowID, BitSet bs) {

@@ -13,17 +13,59 @@ import com.mawen.nfsdb.journal.utils.ByteBuffers;
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
  * @since 2024/4/23
  */
-public class VarcharColumn extends AbstractColumn{
+public class VarcharColumn extends AbstractColumn {
 	private static final Logger LOGGER = Logger.getLogger(VarcharColumn.class);
 
 	private final FixedWidthColumn indexColumn;
 	private final int maxLen;
 	private char[] buffer = new char[32];
 
+
 	public VarcharColumn(MappedFile dataFile, MappedFile indexFile, int maxLen) {
 		super(dataFile);
 		this.indexColumn = new FixedWidthColumn(indexFile, JournalConfiguration.VARCHAR_INDEX_COLUMN_WIDTH);
 		this.maxLen = maxLen;
+	}
+
+
+	public void putString(String value) {
+		if (value == null) {
+			putNull();
+		}
+		else if (maxLen <= JournalMetadata.BYTE_LIMIT) {
+			putStringB(value);
+		}
+		else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
+			putStringW(value);
+		}
+		else {
+			putStringDW(value);
+		}
+	}
+
+	public void putNull() {
+		ByteBufferWrapper buf = getBufferInternal(1);
+		ByteBuffer bb = buf.getByteBuffer();
+		long rowOffset = buf.getOffset() + bb.position();
+		commitAppend(rowOffset, 0);
+	}
+
+	public String getString(long localRowID) {
+		try {
+			if (maxLen <= JournalMetadata.BYTE_LIMIT) {
+				return getStringB(localRowID);
+			}
+			else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
+				return getStringW(localRowID);
+			}
+			else {
+				return getStringDW(localRowID);
+			}
+		}
+		catch (RuntimeException e) {
+			LOGGER.error(this + " Could not read string [localRowID=" + localRowID + "]");
+			throw e;
+		}
 	}
 
 	@Override
@@ -60,39 +102,6 @@ public class VarcharColumn extends AbstractColumn{
 		return indexColumn.getLong(localRowID);
 	}
 
-	public void putString(String value) {
-		if (value == null) {
-			putNull();
-		}
-		else if (maxLen <= JournalMetadata.BYTE_LIMIT) {
-			putStringB(value);
-		}
-		else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
-			putStringW(value);
-		}
-		else {
-			putStringDW(value);
-		}
-	}
-
-	public String getString(long localRowID) {
-		try {
-			if (maxLen <= JournalMetadata.BYTE_LIMIT) {
-				return getStringB(localRowID);
-			}
-			else if (maxLen <= JournalMetadata.TWO_BYTE_LIMIT) {
-				return getStringW(localRowID);
-			}
-			else {
-				return getStringDW(localRowID);
-			}
-		}
-		catch (RuntimeException e) {
-			LOGGER.error(this + " Could not read string [localRowID=" + localRowID + "]");
-			throw e;
-		}
-	}
-
 	@Override
 	public void compact() throws JournalException {
 		super.compact();
@@ -101,13 +110,6 @@ public class VarcharColumn extends AbstractColumn{
 
 	public FixedWidthColumn getIndexColumn() {
 		return indexColumn;
-	}
-
-	public void putNull() {
-		ByteBufferWrapper buf = getBufferInternal(1);
-		ByteBuffer bb = buf.getByteBuffer();
-		long rowOffset = buf.getOffset() + bb.position();
-		commitAppend(rowOffset, 0);
 	}
 
 	/////////////////////////////////////////////////////////////////

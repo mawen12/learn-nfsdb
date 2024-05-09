@@ -9,13 +9,14 @@ import com.mawen.nfsdb.journal.exceptions.JournalException;
  * @since 2024/4/23
  */
 public interface MappedFile extends Closeable {
+
 	ByteBufferWrapper getBuffer(long offset, int size);
-
-	void close();
-
-	long getAppendOffset();
 
 	void setAppendOffset(long offset);
 
+	long getAppendOffset();
+
 	void compact() throws JournalException;
+
+	void close();
 }

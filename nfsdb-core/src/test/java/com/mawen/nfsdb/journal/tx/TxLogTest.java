@@ -19,7 +19,7 @@ public class TxLogTest {
 	public final TemporaryFolder temp = new TemporaryFolder();
 
 	@After
-	public void after() throws IOException {
+	public void after() {
 		temp.delete();
 	}
 

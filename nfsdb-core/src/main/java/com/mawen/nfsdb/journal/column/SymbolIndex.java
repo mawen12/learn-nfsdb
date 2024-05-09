@@ -53,6 +53,7 @@ public class SymbolIndex implements Closeable {
 	private long maxValue;
 	private boolean inTransaction = false;
 
+
 	public SymbolIndex(File baseName, int keyCountHint, int recordCountHint, JournalMode mode, long txAddress) throws JournalException {
 		this.keyCountHint = Math.max(keyCountHint, 1);
 		this.rowBlockLen = Math.max(recordCountHint / this.keyCountHint / 2, 1);
@@ -81,6 +82,7 @@ public class SymbolIndex implements Closeable {
 		this.rowBlockSize = rowBlockLen * 8 + 8;
 		this.rData = new MappedFileImpl(new File(baseName.getParentFile(), baseName.getName() + ".r"), ByteBuffers.getBitHint(rowBlockSize, keyCountHint * 2), mode);
 	}
+
 
 	public static void delete(File base) {
 		Files.delete(new File(base.getParentFile(), base.getName() + ".k"));
@@ -137,10 +139,6 @@ public class SymbolIndex implements Closeable {
 		}
 	}
 
-	public long getTxAddress() {
-		return keyBlockSizeOffset;
-	}
-
 	public void setTxAddress(long txAddress) {
 		if (txAddress == 0) {
 			refresh();
@@ -151,6 +149,10 @@ public class SymbolIndex implements Closeable {
 			this.maxValue = getLong(kData, keyBlockSizeOffset + 8);
 			this.firstEntryOffset = keyBlockSizeOffset + 16;
 		}
+	}
+
+	public long getTxAddress() {
+		return keyBlockSizeOffset;
 	}
 
 	public void refresh() {
@@ -345,8 +347,6 @@ public class SymbolIndex implements Closeable {
 	/**
 	 * Remove empty space at end of index files. This is useful if your chosen file copy routine does not support
 	 * sparse files, e.g. where size of file content significantly smaller than file size in directory catalogue.
-	 *
-	 * @throws JournalException
 	 */
 	public void compact() throws JournalException {
 		kData.compact();
@@ -451,12 +451,12 @@ public class SymbolIndex implements Closeable {
 		}
 	}
 
-	private long getLong(MappedFileImpl storage, long offset) {
-		return storage.getBuffer(offset, 8).getByteBuffer().getLong();
+	private void putLong(MappedFileImpl storage, long offset, long value) {
+		storage.getBuffer(offset, 8).getByteBuffer().putLong(value);
 	}
 
-	public void putLong(MappedFileImpl storage, long offset, long value) {
-		storage.getBuffer(offset, 8).getByteBuffer().putLong(value);
+	private long getLong(MappedFileImpl storage, long offset) {
+		return storage.getBuffer(offset, 8).getByteBuffer().getLong();
 	}
 
 	private ByteBuffer keyBufferOrError(int key) {

@@ -135,8 +135,11 @@ public class TxLog {
 		}
 		// 2 + 4 * tx.symbolTableSizes.len
 		ByteBuffers.putIntW(buffer, tx.symbolTableSizes);
+		// 2 + 8 * tx.symbolTableIndexPointers.len
 		ByteBuffers.putLongW(buffer, tx.symbolTableIndexPointers);
+		// 2 + 8 * tx.indexPointers.len
 		ByteBuffers.putLongW(buffer, tx.indexPointers);
+		// 2 + 8 * tx.lagIndexPointers.len
 		ByteBuffers.putLongW(buffer, tx.lagIndexPointers);
 
 		// write out tx address
@@ -150,11 +153,9 @@ public class TxLog {
 		mf.setAppendOffset(address);
 	}
 
-
 	public void close() {
 		mf.close();
 	}
-
 
 	private long getTxAddress() {
 		if (isEmpty()) {
