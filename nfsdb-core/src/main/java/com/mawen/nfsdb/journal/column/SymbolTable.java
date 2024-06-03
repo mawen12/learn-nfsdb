@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import com.mawen.nfsdb.journal.JournalMode;
 import com.mawen.nfsdb.journal.collections.LongArrayList;
@@ -30,19 +31,29 @@ public class SymbolTable implements Closeable {
 	private static final int HASH_GROUPING_RATE = 25;
 	private static final float CACHE_LOAD_FACTOR = 0.2f;
 
-	/////////////////////////////////////////////////////////////////
-
+	/**
+	 * key and value cache size
+	 */
 	private final int capacity;
+
+	/**
+	 * column name
+	 */
 	private final String column;
+
 	private final TObjectIntHashMap<String> valueCache;
-	private final ArrayList<String> keyCache;
+
+	private final List<String> keyCache;
 
 	private VarcharColumn data;
+
 	private SymbolIndex index;
+
 	private int size;
 
 
-	public SymbolTable(int capacity, int maxLen, File directory, String column, JournalMode mode, int size, long indexTxAddress) throws JournalException {
+	public SymbolTable(int capacity, int maxLen, File directory, String column, JournalMode mode, int size, long indexTxAddress)
+			throws JournalException {
 		this.capacity = capacity;
 		this.column = column;
 		MappedFile dataFile = new MappedFileImpl(new File(directory, column + DATA_FILE_SUFFIX), ByteBuffers.getBitHint(maxLen, capacity), mode);

@@ -11,6 +11,10 @@ import com.mawen.nfsdb.journal.factory.JournalConfiguration;
 import com.mawen.nfsdb.journal.utils.ByteBuffers;
 
 /**
+ * TxLog represent Transaction Log File.
+ * It's buffer size is (1<<16 = 2^16 = 65536).
+ * It's append offset is 9.
+ *
  * @author <a href="1181963012mw@gmail.com">mawen12</a>
  * @since 2024/4/24
  */
@@ -28,6 +32,9 @@ public class TxLog {
 		return getTxAddress() > address;
 	}
 
+	/**
+	 * check file first long value is less than 9
+	 */
 	public boolean isEmpty() {
 		return mf.getAppendOffset() <= 9;
 	}
@@ -165,6 +172,7 @@ public class TxLog {
 		ByteBuffer buffer = mf.getBuffer(0, 9).getByteBuffer();
 		buffer.mark();
 		long limit = 1000;
+		// when first byte is zero, means it has not commit
 		while (limit > 0 && buffer.get() == 0) {
 			Thread.yield();
 			buffer.reset();

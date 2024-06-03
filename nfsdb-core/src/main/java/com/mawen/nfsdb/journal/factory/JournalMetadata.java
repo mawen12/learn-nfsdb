@@ -364,12 +364,15 @@ public class JournalMetadata<T> {
 		 * is indexed
 		 */
 		public boolean indexed;
+
 		public int bitHint;
+
 		public int indexBitHint;
 		/**
 		 * hint distinct count
 		 */
 		public int distinctCountHint;
+
 		public String sameAs;
 		/**
 		 * column avg size

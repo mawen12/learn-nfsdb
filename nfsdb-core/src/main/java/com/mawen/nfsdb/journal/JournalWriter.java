@@ -617,6 +617,7 @@ public class JournalWriter<T> extends Journal<T> {
 		Partition<T> partition = lagNonEmptyNonLag();
 		Partition<T> lag = getIrregularPartition();
 
+		// build tx
 		Tx tx = new Tx();
 		tx.command = command;
 		tx.journalMaxRowID = partition == null ? 0 : Rows.toRowID(partition.getPartitionIndex(), partition.size());

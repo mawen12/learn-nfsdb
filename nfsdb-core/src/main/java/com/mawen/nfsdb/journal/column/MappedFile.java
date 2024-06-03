@@ -14,6 +14,9 @@ public interface MappedFile extends Closeable {
 
 	void setAppendOffset(long offset);
 
+	/**
+	 * Return first long value
+	 */
 	long getAppendOffset();
 
 	void compact() throws JournalException;

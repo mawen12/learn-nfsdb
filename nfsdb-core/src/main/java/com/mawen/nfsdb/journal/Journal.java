@@ -35,6 +35,8 @@ import com.mawen.nfsdb.journal.utils.Dates;
 import com.mawen.nfsdb.journal.utils.Rows;
 import com.mawen.nfsdb.journal.utils.Unsafe;
 import gnu.trove.list.TLongList;
+import lombok.Getter;
+import lombok.Setter;
 import org.joda.time.Interval;
 
 /**
@@ -49,28 +51,47 @@ public class Journal<T> implements Iterable<T>, Closeable {
 	/**
 	 * journal metadata
 	 */
+	@Getter
 	private final JournalMetadata<T> metadata;
+	@Getter
 	private final JournalKey<T> key;
 	/**
-	 * journal store path
+	 * Get the disk location of the Journal.
+	 * -- GETTER --
+	 *  Get the disk location of the Journal.
+
 	 */
+	@Getter
 	private final File location;
 	/**
 	 *
 	 */
 	private final TimerCache timerCache;
+
 	protected TxLog txLog;
+	@Getter
 	private boolean open;
+
 	private final long timestampOffset;
+
 	private String[] readColumns;
+
 	private ColumnMetadata[] columnMetadata;
+	@Getter
 	private Partition<T> irregularPartition;
+	@Setter
 	private JournalClosingListener closeListener;
 
+	@Getter
 	private final Query<T> query = new QueryImpl<>(this);
+
 	private final Map<String, SymbolTable> symbolTableMap = new HashMap<>();
-	private final ArrayList<SymbolTable> symbolTables = new ArrayList<>();
+
+	private final List<SymbolTable> symbolTables = new ArrayList<>();
+
 	protected final List<Partition<T>> partitions = new ArrayList<>();
+
+	@Getter
 	private final Comparator<T> timestampComparator = new Comparator<T>() {
 		@Override
 		public int compare(T o1, T o2) {
@@ -90,10 +111,6 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		this.open = true;
 		this.timestampOffset = getMetadata().getTimestampColumnMetadata() == null ? -1 : getMetadata().getTimestampColumnMetadata().offset;
 		configure();
-	}
-
-	public void setCloseListener(JournalClosingListener closeListener) {
-		this.closeListener = closeListener;
 	}
 
 	public long getTimestamp(T o) {
@@ -231,10 +248,6 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		}
 	}
 
-	public Partition<T> getIrregularPartition() {
-		return irregularPartition;
-	}
-
 	public void setIrregularPartition(Partition<T> partition) {
 		removeIrregularPartitionInternal();
 		irregularPartition = partition;
@@ -247,8 +260,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 
 	public void expireOpenFiles() {
 		long expiry = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(getMetadata().getOpenPartitionTTL());
-		for (int i = 0, partitionSize = partitions.size(); i < partitionSize; i++) {
-			Partition<T> partition = partitions.get(i);
+		for (Partition<T> partition : partitions) {
 			if (expiry > partition.getLastAccessed() && partition.isOpen()) {
 				partition.close();
 			}
@@ -274,20 +286,12 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		return getPartition(Rows.toPartitionIndex(rowID), true).read(Rows.toLocalRowID(rowID));
 	}
 
-	public boolean isOpen() {
-		return open;
-	}
-
 	public long size() throws JournalException {
 		long result = 0;
 		for (int i = 0; i < getPartitionCount(); i++) {
 			result += getPartition(i, true).size();
 		}
 		return result;
-	}
-
-	public JournalKey<T> getKey() {
-		return key;
 	}
 
 	@Override
@@ -312,7 +316,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		int partitionIndex = Rows.toPartitionIndex(rowID);
 		long localRowID = Rows.toLocalRowID(rowID);
 
-		Partition p = getPartition(partitionIndex, open);
+		Partition<T> p = getPartition(partitionIndex, open);
 		if (localRowID < p.size() - 1) {
 			return Rows.toRowID(partitionIndex, localRowID + 1);
 		}
@@ -336,7 +340,7 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		}
 
 		while (--partitionIndex >= 0) {
-			Partition p = getPartition(partitionIndex, true);
+			Partition<T> p = getPartition(partitionIndex, true);
 			if (p.size() > 0) {
 				return Rows.toRowID(partitionIndex, p.size() - 1);
 			}
@@ -363,21 +367,6 @@ public class Journal<T> implements Iterable<T>, Closeable {
 		}
 
 		return new TempPartition<>(this, interval, nonLagPartitionCount(), name);
-	}
-
-	public JournalMetadata<T> getMetadata() {
-		return metadata;
-	}
-
-	public Comparator<T> getTimestampComparator() {
-		return timestampComparator;
-	}
-
-	/**
-	 * Get the disk location of the Journal.
-	 */
-	public File getLocation() {
-		return location;
 	}
 
 	/**

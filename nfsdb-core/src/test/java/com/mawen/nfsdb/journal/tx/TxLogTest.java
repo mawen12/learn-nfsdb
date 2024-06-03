@@ -87,6 +87,7 @@ public class TxLogTest {
 
 		TxLog r = new TxLog(dir, JournalMode.READ);
 		assertTrue(r.hasNext());
+
 		Tx tx1 = r.get();
 		assertEquals(0, tx1.command);
 		assertEquals(10, tx.journalMaxRowID);

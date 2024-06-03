@@ -7,6 +7,7 @@ What is nfsdb?
 ==============
 
 Need For Speed Database. Super-fast, transactional database.
+It is column-oriented database.
 
 Install Thrift
 ==============

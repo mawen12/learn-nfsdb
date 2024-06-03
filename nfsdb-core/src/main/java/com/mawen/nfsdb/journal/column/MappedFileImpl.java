@@ -27,8 +27,17 @@ public class MappedFileImpl implements MappedFile {
 
 	private static final Logger LOGGER = Logger.getLogger(MappedFileImpl.class);
 
+	/**
+	 * underlying file
+	 */
 	private final File file;
+	/**
+	 *
+	 */
 	private final int bitHint;
+	/**
+	 * read or append
+	 */
 	private final JournalMode mode;
 	// reserve first 8 bytes in the file for storing pointer to logical end of file
 	// so the actual data begins from "dataOffset"
@@ -201,6 +210,7 @@ public class MappedFileImpl implements MappedFile {
 		try {
 			FileChannel offsetChannel = this.channel = new RandomAccessFile(file, mode).getChannel();
 			if ("r".equals(mode)) {
+				// read all file size or 8
 				this.offsetBuffer = offsetChannel.map(FileChannel.MapMode.READ_ONLY, 0, Math.min(offsetChannel.size(), 8));
 			}
 			else {
